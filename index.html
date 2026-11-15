@@ -571,6 +571,15 @@
 <script src="./data.js"></script>
 <script>
 "use strict";
+(async function(){
+  // 优先从 KV 读取线上最新数据；读不到则回退到本地 data.js 种子数据
+  try{
+    const r = await fetch('/api/data', { cache:'no-store' });
+    if(r.ok){
+      const live = await r.json();
+      if(live && live.groups && live.cseries) window.KILN_DATA = live;
+    }
+  }catch(e){ /* 保留 data.js 种子数据 */ }
 /* ============ State ============ */
 const RAW = window.KILN_DATA;
 let DB = JSON.parse(JSON.stringify(RAW)); // deep clone working copy
@@ -1772,6 +1781,7 @@ rebuildChannelCards();
 computeThresholds();
 applyFilters();   // renders summary/heat/range/radar/table/KPI (channel charts lazy)
 updateNote();
+})();
 </script>
 </body>
 </html>
