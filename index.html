@@ -580,6 +580,11 @@
       if(live && live.groups && live.cseries) window.KILN_DATA = live;
     }
   }catch(e){ /* 保留 data.js 种子数据 */ }
+  // 探测是否存在后端（/api/health）；纯静态托管无此后端 -> 标记无后端，禁用在线修改/上传
+  try{
+    const h = await fetch('/api/health', { cache:'no-store' });
+    window.__BACKEND = !!h.ok;
+  }catch(e){ window.__BACKEND = false; }
 /* ============ State ============ */
 const RAW = window.KILN_DATA;
 let DB = JSON.parse(JSON.stringify(RAW)); // deep clone working copy
@@ -1348,6 +1353,10 @@ function saveEdit(inp){
 /* ============ Admin password gate (session unlock; backend enforces every write) ============ */
 let ADMIN_PWD=null;
 function requireUnlock(cb){
+  if(!window.__BACKEND){
+    toast('本站为纯静态托管，不支持在线「数据修正 / 上传」。如需更新数据，请把新表发我，我更新后重新发布。', false);
+    return;
+  }
   if(ADMIN_PWD){ cb(); return; }
   document.getElementById('pwdErr').textContent='';
   document.getElementById('pwdInput').value='';
