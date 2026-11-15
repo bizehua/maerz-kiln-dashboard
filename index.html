@@ -1,0 +1,1777 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>500T/D 麦尔兹石灰窑测温数据可视化看板</title>
+<script src="./lib/echarts.min.js"></script>
+<script src="./lib/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg-0:#060a18; --bg-1:#0b1430; --bg-2:#0e1a3e;
+    --glass:rgba(255,255,255,.045);
+    --glass-2:rgba(255,255,255,.07);
+    --border:rgba(255,255,255,.10);
+    --border-2:rgba(120,180,255,.22);
+    --text:#eaf1ff; --dim:#93a6cf; --dim2:#6f82ad;
+    --accent:#36cfc9; --accent2:#597ef7; --gold:#ffc53d;
+    --shadow:0 10px 40px rgba(0,0,0,.45);
+    --radius:18px;
+    font-synthesis:none;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei","HarmonyOS Sans SC","Segoe UI",system-ui,sans-serif;
+    color:var(--text);
+    background:
+      radial-gradient(1200px 700px at 12% -10%, rgba(54,207,201,.16), transparent 55%),
+      radial-gradient(1100px 800px at 100% 0%, rgba(89,126,247,.18), transparent 50%),
+      radial-gradient(900px 700px at 50% 120%, rgba(146,84,222,.12), transparent 55%),
+      linear-gradient(180deg,var(--bg-0),var(--bg-1) 55%,var(--bg-2));
+    background-attachment:fixed;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1680px;margin:0 auto;padding:22px 26px 60px;}
+  /* ---------- Header ---------- */
+  header.topbar{
+    display:block;padding:14px 22px 12px;margin-bottom:18px;border-radius:var(--radius);
+    background:linear-gradient(120deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+    border:1px solid var(--border);box-shadow:var(--shadow);
+    backdrop-filter:blur(14px);position:relative;overflow:hidden;
+  }
+  header.topbar::before{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(90deg,transparent,rgba(54,207,201,.10),transparent);
+    transform:translateX(-100%);animation:sheen 7s infinite;
+  }
+  @keyframes sheen{0%{transform:translateX(-100%)}55%{transform:translateX(100%)}100%{transform:translateX(100%)}}
+  .top-main{display:flex;align-items:center;gap:20px;z-index:1;}
+  .brand{display:flex;align-items:center;gap:18px;z-index:1;flex:1 1 auto;min-width:0;}
+  .logo{
+    width:132px;height:47px;border-radius:11px;flex:0 0 auto;
+    background:#fff;border:1px solid rgba(0,0,0,.08);
+    box-shadow:0 2px 8px rgba(0,0,0,.18);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+  }
+  .logo img{width:100%;height:100%;object-fit:contain;display:block;}
+  .title{flex:1 1 auto;min-width:0;}
+  .title h1{margin:0;font-size:16.5px;letter-spacing:.4px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    background:linear-gradient(90deg,#fff,#bfe9ff 40%,var(--accent));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+  .title h1 .t-en{display:block;font-size:9.5px;font-weight:600;letter-spacing:1px;-webkit-text-fill-color:#8fb2ff;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .title p{margin:2px 0 0;font-size:9.5px;color:var(--dim);letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .tools{margin-top:10px;display:flex;align-items:center;gap:8px;z-index:1;flex-wrap:wrap;justify-content:flex-end;}
+  .clock{font-variant-numeric:tabular-nums;padding:0 6px 0 14px;min-width:184px;text-align:right;white-space:nowrap;flex:0 0 auto;}
+  .clock .cdate{display:block;font-size:12.5px;font-weight:600;color:var(--dim);letter-spacing:1.6px;margin-bottom:1px;}
+  .clock .ctime{display:block;font-size:30px;font-weight:700;color:#eef4ff;letter-spacing:2px;line-height:1.05;
+    font-family:"DIN Alternate","Bahnschrift","Avenir Next Condensed","Helvetica Neue","PingFang SC",sans-serif;
+    text-shadow:0 0 18px rgba(89,126,247,.55);}
+  .clock .ctime::before{
+    content:"";display:inline-block;width:22px;height:22px;margin-right:9px;vertical-align:-3px;
+    background:linear-gradient(180deg,#cfe0ff,#7fa8ff);
+    -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 6.8V12l3.4 2'/%3E%3C/svg%3E") no-repeat center/contain;
+    mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 6.8V12l3.4 2'/%3E%3C/svg%3E") no-repeat center/contain;
+  }
+  .btn{
+    border:1px solid var(--border-2);background:var(--glass-2);color:var(--text);
+    padding:7px 13px;border-radius:10px;font-size:12.5px;cursor:pointer;transition:.18s;
+    display:inline-flex;align-items:center;gap:6px;font-weight:600;
+  }
+  .btn:hover{background:rgba(89,126,247,.22);border-color:var(--accent);transform:translateY(-1px);}
+  .btn.primary{background:linear-gradient(120deg,var(--accent2),#6f9bff);border-color:transparent;color:#fff;box-shadow:0 6px 18px rgba(89,126,247,.4);}
+  .btn.gold{background:linear-gradient(120deg,#ffc53d,#ff9c3d);border-color:transparent;color:#3a2a00;box-shadow:0 6px 18px rgba(255,197,61,.35);}
+  .btn.gold .en{color:rgba(58,42,0,.78);}
+  .btn.primary .en{color:rgba(255,255,255,.9);}
+  .btn.sm{padding:5px 11px;font-size:12px;border-radius:9px;}
+  .chan-ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:6px 0 14px;padding:11px 14px;border:1px solid var(--border);border-radius:14px;background:var(--glass);}
+  .chan-ctrl-lab{font-weight:700;font-size:14px;white-space:nowrap;}
+  .chan-ctrl .chips{margin-left:auto;}
+  .chan-ctrl .chip{font-size:12.5px;padding:5px 10px;}
+  .chan-ctrl-body{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding-top:12px;margin-top:2px;border-top:1px dashed rgba(255,255,255,.07);}
+  .chan-ctrl.collapsed .chan-ctrl-body{display:none;}
+  .chan-ctrl .fb-toggle{padding:6px 14px;}
+  .chan-ctrl:not(.collapsed) .fb-toggle .ar{transform:rotate(180deg);}
+  .btn .ic{font-size:15px;line-height:1;}
+  /* ============ 筛选行内操作按钮组 ============ */
+  .fb-head{flex-wrap:wrap;row-gap:8px;}
+  .fb-actions{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-left:6px;}
+  .tb-btn{
+    display:inline-flex;align-items:center;gap:5px;white-space:nowrap;
+    padding:6px 11px;border-radius:10px;cursor:pointer;
+    border:1px solid var(--border-2);background:var(--glass-2);color:var(--text);
+    transition:.18s;box-shadow:0 2px 8px rgba(0,0,0,.25);
+  }
+  .tb-btn .ic{font-size:13px;line-height:1;}
+  .tb-btn .lbl{font-size:12px;font-weight:700;letter-spacing:.3px;}
+  .tb-btn .en{font-size:9px;font-weight:600;color:#8aa3d6;}
+  .tb-btn:hover{background:rgba(89,126,247,.24);border-color:var(--accent);transform:translateY(-1px);}
+  .tb-btn.primary{background:linear-gradient(120deg,var(--accent2),#6f9bff);border-color:transparent;color:#fff;box-shadow:0 4px 12px rgba(89,126,247,.42);}
+  .tb-btn.primary .en{color:rgba(255,255,255,.92);}
+  .tb-btn.primary:hover{background:linear-gradient(120deg,var(--accent2),#6f9bff);}
+  .tb-btn.gold{background:linear-gradient(120deg,#ffc53d,#ff9c3d);border-color:transparent;color:#3a2a00;box-shadow:0 4px 12px rgba(255,197,61,.38);}
+  .tb-btn.gold .en{color:rgba(58,42,0,.8);}
+  .tb-btn.gold:hover{background:linear-gradient(120deg,#ffc53d,#ff9c3d);}
+  .filterbar .fb-toggle{padding:6px 12px;flex-shrink:0;}
+  @media (max-width:1280px){
+    .fb-summary{flex:1 1 100%;order:9;text-align:left;}
+    .tb-btn .en{display:none;}
+  }
+  /* ---------- KPI ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:18px;}
+  .kpi{
+    position:relative;border-radius:var(--radius);padding:18px 18px 16px;overflow:hidden;
+    background:linear-gradient(160deg,var(--glass),rgba(255,255,255,.015));
+    border:1px solid var(--border);box-shadow:var(--shadow);backdrop-filter:blur(12px);
+  }
+  .kpi .glyph{position:absolute;right:-6px;top:-10px;font-size:74px;opacity:.10;}
+  .kpi .lab{font-size:12.5px;color:var(--dim);letter-spacing:.5px;}
+  .kpi .val{font-size:30px;font-weight:800;margin-top:8px;font-variant-numeric:tabular-nums;letter-spacing:.5px;}
+  .kpi .val small{font-size:14px;font-weight:600;color:var(--dim);margin-left:3px;}
+  .kpi .sub{font-size:11.5px;color:var(--dim2);margin-top:5px;}
+  .kpi.acc .val{color:var(--accent);} .kpi.blue .val{color:#7fa3ff;} .kpi.gold .val{color:var(--gold);} .kpi.pur .val{color:#c08bff;}
+  /* ---------- Controls ---------- */
+  .panel{
+    border-radius:var(--radius);background:linear-gradient(160deg,var(--glass),rgba(255,255,255,.015));
+    border:1px solid var(--border);box-shadow:var(--shadow);backdrop-filter:blur(12px);padding:16px 18px;margin-bottom:18px;
+  }
+  .panel h3{margin:0 0 12px;font-size:13px;color:var(--dim);font-weight:600;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:8px;}
+  .panel h3::before{content:"";width:4px;height:14px;border-radius:3px;background:linear-gradient(var(--accent),var(--accent2));}
+  .ctrl-grid{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start;}
+  .ctrl-block{min-width:180px;}
+  .ctrl-block .t{font-size:12px;color:var(--dim2);margin-bottom:8px;letter-spacing:.5px;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{
+    border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--dim);
+    padding:6px 12px;border-radius:20px;font-size:12.5px;cursor:pointer;transition:.15s;user-select:none;display:flex;align-items:center;gap:6px;
+  }
+  .chip .dot{width:9px;height:9px;border-radius:50%;background:var(--dim2);}
+  .chip.on{color:#fff;background:rgba(89,126,247,.22);border-color:var(--accent);}
+  .chip.on .dot{background:var(--c);box-shadow:0 0 8px var(--c);}
+  .seg{display:inline-flex;border:1px solid var(--border);border-radius:11px;overflow:hidden;}
+  .seg button{background:transparent;border:0;color:var(--dim);padding:8px 16px;font-size:13px;cursor:pointer;font-weight:600;}
+  .seg button.on{background:linear-gradient(120deg,var(--accent2),#6f9bff);color:#fff;}
+  .mini{font-size:11.5px;color:var(--dim2);margin-top:8px;}
+  /* ---------- Charts ---------- */
+  .charts{display:grid;grid-template-columns:1.55fr 1fr;gap:18px;margin-bottom:18px;}
+  .card{
+    border-radius:var(--radius);background:linear-gradient(160deg,var(--glass),rgba(255,255,255,.015));
+    border:1px solid var(--border);box-shadow:var(--shadow);backdrop-filter:blur(12px);padding:14px 16px 6px;position:relative;
+  }
+  .card .chead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:10px;}
+  .card .chead .ct{font-size:14px;font-weight:700;letter-spacing:.5px;}
+  .card .chead .cs{font-size:11.5px;color:#a9bce4;}
+  .fs-mini{margin-left:10px;border:1px solid var(--border-2);background:var(--glass-2);color:#cfe0ff;border-radius:8px;min-width:26px;height:26px;cursor:pointer;font-size:13px;line-height:1;transition:.15s;flex:0 0 auto;}
+  .fs-mini:hover{color:#fff;border-color:var(--accent);background:rgba(89,126,247,.28);}
+  .card:fullscreen,.card:-webkit-full-screen{background:linear-gradient(160deg,#0b1430,#0e1a3e);padding:18px 22px 10px;display:flex;flex-direction:column;overflow:hidden;}
+  .card:fullscreen .chart,.card:-webkit-full-screen .chart{flex:1;min-height:0;height:auto;}
+  /* In-page maximize mode (works inside preview iframe, no native fullscreen needed) */
+  .card.maximized{position:fixed;inset:0;z-index:10000;width:100vw;height:100vh;max-width:none;margin:0;border-radius:0;
+    display:flex;flex-direction:column;padding:18px 24px 12px;overflow:hidden;backdrop-filter:none;-webkit-backdrop-filter:none;
+    background:linear-gradient(160deg,#0b1430,#0e1a3e);border:1px solid var(--border-2);box-shadow:0 0 90px rgba(0,0,0,.6);}
+  .card.maximized .chart{flex:1;min-height:0;height:auto;}
+  body.has-max{overflow:hidden;}
+  .en{font-style:normal;font-weight:500;color:#8aa3d6;font-size:.82em;margin-left:5px;letter-spacing:.4px;}
+  .chart{width:100%;height:380px;}
+  .chart.sm{height:360px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+  /* ---------- Channel section ---------- */
+  .chan-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px;}
+  .chan-grid .chart{height:330px;}
+  /* 防止放大→还原后残留的大 canvas 把网格卡片撑出页面边界 */
+  .charts>.card,.row2>.card,.chan-grid>.card{min-width:0;max-width:100%;overflow:hidden;}
+  /* ---------- Table ---------- */
+  .tbl-wrap{max-height:430px;overflow:auto;border-radius:12px;border:1px solid var(--border);}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{position:sticky;top:0;background:rgba(16,26,58,.96);backdrop-filter:blur(6px);
+    color:#cfe0ff;font-weight:600;text-align:left;padding:11px 14px;border-bottom:1px solid var(--border-2);cursor:pointer;white-space:nowrap;letter-spacing:.3px;}
+  tbody td{padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.05);color:var(--text);font-variant-numeric:tabular-nums;}
+  tbody tr:hover{background:rgba(89,126,247,.10);}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:20px;font-size:11.5px;border:1px solid var(--border);}
+  .pill .dot{width:8px;height:8px;border-radius:50%;}
+  .tag-hi{color:#ff9c8a;} .tag-lo{color:#8ad6ff;}
+  .note{font-size:11.5px;color:var(--dim2);margin-top:10px;line-height:1.7;}
+  .dev-sign{text-align:right;margin-top:16px;font-size:17px;font-weight:800;color:var(--accent);letter-spacing:1px;}
+  /* ---------- Modal / Toast ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(4,8,20,.72);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:50;}
+  .overlay.show{display:flex;}
+  .modal{width:min(520px,92vw);border-radius:20px;padding:26px;background:linear-gradient(160deg,#0e1838,#0a1230);border:1px solid var(--border-2);box-shadow:0 30px 80px rgba(0,0,0,.6);}
+  .modal h2{margin:0 0 6px;font-size:19px;}
+  .modal p{color:var(--dim);font-size:13px;line-height:1.7;margin:8px 0;}
+  .modal .field{margin:14px 0;}
+  .modal label{font-size:12.5px;color:var(--dim2);display:block;margin-bottom:6px;}
+  .modal input,.modal select{width:100%;padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);font-size:14px;}
+  .modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;}
+  .toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(20px);opacity:0;
+    background:linear-gradient(120deg,#0e1838,#13235a);border:1px solid var(--border-2);color:#fff;
+    padding:13px 22px;border-radius:14px;box-shadow:0 16px 40px rgba(0,0,0,.5);z-index:60;transition:.3s;font-size:13.5px;pointer-events:none;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast .ok{color:var(--accent);}
+  body.fs header.topbar .tools .btn.txt-hide{display:none;}
+  body.fs .kpis{grid-template-columns:repeat(5,1fr);}
+  body.fs .charts .chart{height:62vh;}
+  body.fs .row2{display:grid;}
+  body.fs .row2 .chart{height:62vh;}
+  @media(max-width:1300px){.kpis{grid-template-columns:repeat(2,1fr);}.charts{grid-template-columns:1fr;}.row2{grid-template-columns:1fr;}.chan-grid{grid-template-columns:1fr;}}
+  /* ---------- Compact filter bar (collapsible, lives under KPIs) ---------- */
+  .filterbar{border-radius:var(--radius);background:linear-gradient(160deg,var(--glass),rgba(255,255,255,.015));
+    border:1px solid var(--border);box-shadow:var(--shadow);backdrop-filter:blur(12px);margin-bottom:18px;overflow:hidden;}
+  .filterbar .fb-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 18px;}
+  .fb-toggle{border:1px solid var(--border-2);background:var(--glass-2);color:var(--text);
+    padding:8px 16px;border-radius:11px;font-size:13.5px;font-weight:700;cursor:pointer;transition:.18s;display:inline-flex;align-items:center;gap:8px;}
+  .fb-toggle:hover{background:rgba(89,126,247,.22);border-color:var(--accent);transform:translateY(-1px);}
+  .fb-toggle .ar{transition:transform .25s;font-size:12px;color:var(--dim);}
+  .filterbar:not(.collapsed) .fb-toggle .ar{transform:rotate(180deg);}
+  .fb-summary{font-size:12.5px;color:var(--dim);letter-spacing:.4px;text-align:right;margin-left:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .fb-body{padding:4px 18px 18px;border-top:1px solid var(--border);}
+  .filterbar.collapsed .fb-body{display:none;}
+  .fb-row{display:flex;align-items:flex-start;gap:14px;padding:11px 0;border-bottom:1px dashed rgba(255,255,255,.06);}
+  .fb-row:last-child{border-bottom:0;}
+  .fb-lab{flex:0 0 84px;font-size:12.5px;color:var(--dim2);font-weight:600;padding-top:7px;letter-spacing:.5px;white-space:nowrap;}
+  .fb-lab .en{font-size:9.5px;opacity:.75;margin-left:3px;}
+  .fb-row .chips{flex:1;}
+  /* ---------- Trend play (fullscreen rotation) ---------- */
+  #playOverlay{position:fixed;inset:0;z-index:12000;display:none;flex-direction:column;
+    background:linear-gradient(160deg,#0a1230,#0b1430 60%,#0e1a3e);}
+  #playOverlay.show{display:flex;}
+  .play-top{display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:1px solid var(--border-2);}
+  .play-title{font-size:16px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:8px;}
+  .play-title .en{font-size:12px;}
+  .play-now{font-size:14px;color:var(--accent);font-weight:700;margin-left:8px;}
+  .play-tools{margin-left:auto;display:flex;align-items:center;gap:8px;}
+  .play-tools .btn{white-space:nowrap;flex:0 0 auto;}
+  @media (max-width:1400px){ .play-tip{display:none;} }
+  .play-mid{flex:1;min-height:0;display:flex;position:relative;}
+  .play-chart{flex:1;min-height:0;position:relative;padding:12px 26px 18px;}
+  #playChart{width:100%;height:100%;}
+  /* 多图同屏（网格） */
+  .play-grid{flex:1;min-height:0;display:none;gap:10px;padding:12px 22px 16px;overflow:auto;}
+  #playOverlay.mode-grid .play-chart{display:none;}
+  #playOverlay.mode-grid .play-grid{display:grid;}
+  #playOverlay.mode-grid .play-dots{display:none;}
+  #playOverlay.mode-grid .play-step{display:none;}
+  .ptile{position:relative;min-height:0;border:1px solid var(--border-2);border-radius:14px;background:rgba(8,16,40,.55);padding:4px 6px 6px;display:flex;flex-direction:column;overflow:hidden;}
+  .pt-head{display:flex;align-items:center;gap:6px;padding:3px 6px 4px;flex:0 0 auto;}
+  .pt-cap{font-size:12.5px;font-weight:700;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
+  .pt-pick{border:1px solid var(--border-2);background:var(--glass-2);color:var(--text);font-size:10.5px;padding:2px 9px;border-radius:8px;cursor:pointer;flex:0 0 auto;transition:.15s;}
+  .pt-pick:hover{border-color:var(--accent);background:rgba(89,126,247,.22);}
+  .ptile .pt-chart{flex:1;min-height:0;}
+  .pt-pop{position:absolute;top:32px;right:8px;z-index:40;background:rgba(8,16,40,.97);border:1px solid var(--border-2);border-radius:12px;padding:10px;width:236px;max-height:72%;overflow:auto;display:none;box-shadow:var(--shadow);}
+  .ptile.show-pop .pt-pop{display:block;}
+  .pt-pop h5{margin:0 0 4px;font-size:11px;color:var(--dim);font-weight:600;}
+  .pt-pop .chips{gap:5px;}
+  .pt-pop .chip{font-size:10.5px;padding:3px 8px;}
+  .play-side{width:320px;flex:0 0 320px;overflow:auto;background:rgba(8,16,40,.94);border-left:1px solid var(--border-2);
+    padding:18px;backdrop-filter:blur(10px);box-shadow:var(--shadow);transition:width .3s ease,opacity .3s ease,transform .3s ease;}
+  #playOverlay.hide-settings .play-side{width:0;flex-basis:0;opacity:0;transform:translateX(40px);padding:0;border:0;overflow:hidden;pointer-events:none;}
+  .play-side h4{margin:0 0 6px;font-size:13px;color:var(--dim);font-weight:600;letter-spacing:.5px;}
+  .play-side .chips{gap:7px;margin-top:10px;}
+  .play-side .chip{font-size:12px;padding:5px 10px;}
+  .play-hint{font-size:12px;color:var(--gold);margin-top:10px;min-height:16px;line-height:1.5;}
+  .play-dots{display:flex;gap:9px;justify-content:center;padding:6px 0 16px;flex-wrap:wrap;}
+  .play-dot{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.18);cursor:pointer;transition:.18s;}
+  .play-dot.on{background:var(--accent);box-shadow:0 0 10px var(--accent);transform:scale(1.3);}
+  .play-dot:hover{background:var(--accent2);}
+  .play-clock{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;margin-right:6px;}
+  .play-clock .cdate{display:block;font-size:10.5px;font-weight:600;color:var(--dim);letter-spacing:1px;}
+  .play-clock .ctime{display:block;font-size:15px;font-weight:700;color:#eef4ff;letter-spacing:1px;
+    font-family:"DIN Alternate","Bahnschrift","Avenir Next Condensed","Helvetica Neue","PingFang SC",sans-serif;}
+  .play-tip{font-size:11px;color:var(--dim2);font-weight:400;}
+  .play-tip .en{font-size:10px;opacity:.8;}
+  .play-now{flex:0 0 auto;}
+  /* 迷你版主标题栏（轮播页顶部，与主界面同步内容） */
+  .play-brand{gap:11px;flex:1 1 auto;min-width:0;}
+  .play-brand .logo{width:94px;height:36px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+  .play-brand .title h1{font-size:14.5px;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .play-brand .title h1 .t-en{font-size:8.5px;letter-spacing:1px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .play-brand .title p{font-size:9.5px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  /* 单画面点击全屏放大 */
+  .play-big{position:absolute;inset:0;z-index:30;display:none;flex-direction:column;background:linear-gradient(160deg,#0a1230,#0c1746 60%,#0a1024);padding:14px 22px 18px;box-sizing:border-box;}
+  #playOverlay.show-big .play-grid{display:none;}
+  #playOverlay.show-big .play-big{display:flex;}
+  .play-back{border:1px solid var(--border-2);background:var(--glass-2);color:var(--text);font-size:13px;padding:6px 16px;border-radius:10px;cursor:pointer;align-self:flex-start;margin-bottom:0;transition:.15s;flex:0 0 auto;}
+  .play-back:hover{border-color:var(--accent);background:rgba(89,126,247,.22);}
+  .play-big-head{display:flex;align-items:center;gap:14px;flex:0 0 auto;margin-bottom:8px;min-width:0;}
+  .play-big-cap{font-size:22px;font-weight:800;color:var(--accent);letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+  #playBigChart{flex:1;min-height:0;width:100%;}
+  .pt-fs{border:1px solid var(--border-2);background:var(--glass-2);color:var(--text);font-size:11px;padding:2px 8px;border-radius:8px;cursor:pointer;flex:0 0 auto;transition:.15s;}
+  .pt-fs:hover{border-color:var(--accent2);background:rgba(54,207,201,.22);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="top-main">
+      <div class="logo"><img src="./assets/eastern-steel-logo-full.png" alt="東鋼集團有限公司 EASTERN STEEL SDN. BHD." onerror="this.style.display='none'"></div>
+      <div class="title">
+        <h1>500T/D 麦尔兹石灰窑测温数据可视化看板<span class="t-en">500T/D MAERZ LIME KILN TEMPERATURE VISUALIZATION DASHBOARD</span></h1>
+        <p>多年度 · 多测温点位 · 多通道 趋势监测分析平台 · MULTI-YEAR · MULTI-POINT · MULTI-CHANNEL</p>
+      </div>
+      <div class="clock" id="clock">--</div>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="filterbar collapsed" id="filterbar">
+    <div class="fb-head">
+      <button class="fb-toggle" id="fbToggle">⚙ 数据筛选 <i class="en">Filters</i> <span class="ar">▾</span></button>
+      <div class="fb-actions">
+        <button class="tb-btn" id="btnUpload" title="上传数据 Upload"><span class="ic">⬆</span><span class="lbl">上传数据</span><span class="en">Upload</span></button>
+        <button class="tb-btn gold" id="btnExport" title="下载报表 Export"><span class="ic">⬇</span><span class="lbl">下载报表</span><span class="en">Export</span></button>
+        <button class="tb-btn" id="btnEdit" title="数据修正 Edit"><span class="ic">✎</span><span class="lbl">数据修正</span><span class="en">Edit</span></button>
+        <button class="tb-btn" id="btnPlay" title="趋势轮播 Play"><span class="ic">▶</span><span class="lbl">趋势轮播</span><span class="en">Play</span></button>
+        <button class="tb-btn primary" id="btnFs" title="全屏展示 Fullscreen"><span class="ic">⛶</span><span class="lbl">全屏展示</span><span class="en">Fullscreen</span></button>
+      </div>
+      <div class="fb-summary" id="curRange">当前范围：—</div>
+    </div>
+    <div class="fb-body" id="fbBody">
+      <div class="fb-row"><span class="fb-lab">年份<i class="en">Year</i></span><div class="chips" id="yearChips"></div></div>
+      <div class="fb-row"><span class="fb-lab">月份<i class="en">Month</i></span><div class="chips" id="monthChips"></div></div>
+      <div class="fb-row"><span class="fb-lab">点位<i class="en">Points</i></span><div class="chips" id="pointChips"></div></div>
+      <div class="fb-row"><span class="fb-lab">操作<i class="en">Actions</i></span><div class="chips">
+        <div class="chip" id="selAll">全选<span class="en">All</span></div>
+        <div class="chip" id="selLatest">仅最新月<span class="en">Latest</span></div>
+        <div class="chip" id="resetData">恢复原始<span class="en">Reset</span></div>
+      </div></div>
+    </div>
+  </section>
+
+  <section class="charts">
+    <div class="card">
+      <div class="chead"><div class="ct">📈 汇总趋势图（各点位日均值）<i class="en">Summary Trend · daily mean per point</i></div><div style="display:flex;align-items:center;gap:8px;"><div class="cs" id="trendSub">—</div><button class="fs-mini" title="全屏 Fullscreen">⛶</button></div></div>
+      <div class="chart" id="trendChart"></div>
+    </div>
+    <div class="card">
+      <div class="chead"><div class="ct">🔥 月度热力图（点位 × 月份）<i class="en">Monthly Heatmap</i></div><div style="display:flex;align-items:center;gap:8px;"><div class="cs">颜色越暖温度越高 <span class="en">warmer = higher</span></div><button class="fs-mini" title="全屏 Fullscreen">⛶</button></div></div>
+      <div class="chart sm" id="heatChart"></div>
+    </div>
+  </section>
+
+  <section class="row2">
+    <div class="card">
+      <div class="chead"><div class="ct">📊 点位温度区间（最低—平均—最高）<i class="en">Min–Avg–Max Range</i></div><div style="display:flex;align-items:center;gap:8px;"><div class="cs">圆点为区间均值 <span class="en">dot = avg</span></div><button class="fs-mini" title="全屏 Fullscreen">⛶</button></div></div>
+      <div class="chart sm" id="rangeChart"></div>
+    </div>
+    <div class="card">
+      <div class="chead"><div class="ct">🧭 点位对比（平均/峰值/波动）<i class="en">Avg / Peak / Volatility</i></div><div style="display:flex;align-items:center;gap:8px;"><div class="cs">多维雷达 <span class="en">Radar</span></div><button class="fs-mini" title="全屏 Fullscreen">⛶</button></div></div>
+      <div class="chart sm" id="radarChart"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h3>各点位通道趋势图 · PER-POINT CHANNEL TRENDS</h3>
+    <div class="mini">每个测温点位单独成图，图内每条线代表一个测温通道（如「通道拨火孔膛一」含 18 个通道）。滚动到视图内才会渲染，提升性能。默认仅显示第一条通道，点图例可叠加其他通道。<span class="en">Each measurement point gets its own chart; every line is one channel. Charts render lazily when scrolled into view. Only the first channel is shown by default — click the legend to add more.</span></div>
+    <div class="chan-ctrl collapsed" id="chanCtrl">
+      <button class="fb-toggle" id="chanCtrlToggle">👁 显隐点位 <i class="en">Show / hide points</i> <span class="ar">▾</span></button>
+      <div class="chan-ctrl-body">
+        <span class="chan-ctrl-lab">显示点位 <i class="en">Show points</i></span>
+        <button class="btn sm" id="chanAll">全选 <i class="en">All</i></button>
+        <button class="btn sm" id="chanNone">全不选 <i class="en">None</i></button>
+        <div class="chips" id="chanPointChips"></div>
+      </div>
+    </div>
+    <div class="chan-grid" id="chanHost"></div>
+  </section>
+
+  <section class="panel">
+    <h3>数据明细 · DATA TABLE</h3>
+    <div class="tbl-wrap">
+      <table id="dataTbl">
+        <thead><tr>
+          <th data-k="d">日期<span class="en">Date</span></th><th data-k="p">测温点位<span class="en">Point</span></th><th data-k="m">平均温度℃<span class="en">Avg</span></th>
+          <th data-k="lo">最低℃<span class="en">Min</span></th><th data-k="hi">最高℃<span class="en">Max</span></th><th data-k="n">通道数<span class="en">Ch</span></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="note" id="noteBox"></div>
+    <div class="dev-sign">看板开发人：毕泽华</div>
+  </section>
+</div>
+
+<!-- Upload modal -->
+<div class="overlay" id="upOverlay">
+  <div class="modal">
+    <h2>上传测温数据 <i class="en">Upload Data</i></h2>
+    <p>支持与本看板同格式的 Excel（含“点位名称 + 通道子表头”的日报表）。系统将自动解析并按“点位 + 通道 + 日期”合并更新。<br><span class="en" style="opacity:.72">Supports Excel in the same format as this dashboard (daily sheets with "point name + channel sub-headers"). Data is parsed and merged by point + channel + date automatically.</span></p>
+    <div class="field">
+      <label>选择 Excel 文件（.xlsx）<i class="en">Choose Excel file</i></label>
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+    </div>
+    <div class="field" id="yearFallbackField" style="display:none;">
+      <label>未识别到表内日期时使用的年份 <i class="en">Fallback year</i></label>
+      <input type="number" id="fallbackYear" value="2026" min="2000" max="2100">
+    </div>
+    <div class="field">
+      <label>导入方式 <i class="en">Import mode</i></label>
+      <div class="seg" id="mergeSeg">
+        <button data-m="merge" class="on">合并更新 <i class="en">Merge</i>（推荐）</button>
+        <button data-m="replace">整表替换 <i class="en">Replace</i></button>
+      </div>
+    </div>
+    <div class="field">
+      <label>保存位置 <i class="en">Save to</i></label>
+      <div class="seg" id="saveSeg">
+        <button data-s="local">仅本机预览 <i class="en">Local only</i></button>
+        <button data-s="backend" class="on">保存到后台 <i class="en">Backend</i>（所有人可见）</button>
+      </div>
+      <p class="mini" style="margin-top:6px;">选「保存到后台」：导入后会写回服务器，之后任何人打开看板都是最新数据，刷新/重启都保留。<span class="en">Saved to backend = visible to everyone, persists.</span><br>本功能与「数据修正」共用同一后台密码，改一处两处同步生效（修改密码入口在「数据修正」面板内）。</p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="upCancel">取消 <i class="en">Cancel</i></button>
+      <button class="btn primary" id="upConfirm">确认导入 <i class="en">Import</i></button>
+    </div>
+  </div>
+</div>
+
+<!-- Export modal -->
+<div class="overlay" id="exOverlay">
+  <div class="modal">
+    <h2>下载数据报表 <i class="en">Export Report</i></h2>
+    <p>将<b>当前筛选结果</b>导出。下方可选择格式与内容范围。<br><span class="en" style="opacity:.72">Exports the currently filtered data. Choose format and scope below.</span></p>
+    <div class="field">
+      <label>导出范围 <i class="en">Scope</i></label>
+      <div class="seg" id="exScope">
+        <button data-s="filtered" class="on">当前筛选 <i class="en">Filtered</i></button>
+        <button data-s="all">全部数据 <i class="en">All data</i></button>
+      </div>
+    </div>
+    <div class="field">
+      <label>文件格式 <i class="en">Format</i></label>
+      <div class="seg" id="exFmt">
+        <button data-f="xlsx" class="on">Excel (.xlsx)</button>
+        <button data-f="csv">CSV</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="exCancel">取消 <i class="en">Cancel</i></button>
+      <button class="btn gold" id="exConfirm">下载 <i class="en">Download</i></button>
+    </div>
+  </div>
+</div>
+
+<!-- Data-correction backend -->
+<div class="overlay" id="editOverlay">
+  <div class="modal" style="width:min(940px,95vw);">
+    <h2>数据修正后台 <i class="en">Data Correction</i></h2>
+    <p>选择测温点位与通道，下方为该通道逐日温度。改完按回车即保存到后台（写回服务器，所有看图人都立即生效）。<b style="color:#ff9c8a;">红色行</b>为超出该点位正常区间的异常值。<br><span class="en" style="opacity:.72">Pick a point and channel; the daily values are listed below. Press Enter to save to the backend (live for everyone). <b style="color:#ff9c8a;">Red rows</b> are outliers beyond the point's normal range.</span></p>
+    <div class="field" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
+      <div style="flex:1;min-width:220px;"><label>测温点位 POINT</label>
+        <select id="edGroup" style="width:100%;padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);font-size:14px;"></select>
+      </div>
+      <div style="flex:1;min-width:220px;"><label>通道 CHANNEL</label>
+        <select id="edChannel" style="width:100%;padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);font-size:14px;"></select>
+      </div>
+    </div>
+    <div class="field" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:6px 0 0;">
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;"><input type="checkbox" id="edAnomOnly"> 仅显示异常值 <i class="en">Outliers only</i></label>
+      <button class="btn" id="edMeanAll"><span class="ic">↺</span>异常值→恢复均值 <i class="en">Restore mean</i></button>
+      <span class="mini" id="edStatus"></span>
+    </div>
+    <div class="tbl-wrap" id="edTblWrap" style="max-height:46vh;">
+      <table id="edTbl">
+        <thead><tr><th style="width:150px;">日期 DATE</th><th style="width:200px;">温度℃ VALUE（可编辑 <i class="en">editable</i>）</th><th style="width:90px;">状态 <i class="en">Status</i></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button class="btn" id="edChangePwd">修改密码 <i class="en">Change Pwd</i></button>
+      <span class="mini" id="edPwdHint" style="opacity:.72;margin-right:auto;"></span>
+      <button class="btn" id="edClose">关闭 <i class="en">Close</i></button>
+    </div>
+    <div id="edPwdBox" style="display:none;margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.03);">
+      <div style="font-weight:600;margin-bottom:10px;">修改后台密码 <i class="en">Change admin password</i></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div style="flex:1;min-width:170px;"><label style="font-size:12.5px;color:var(--dim2);display:block;margin-bottom:6px;">新密码 NEW <i class="en">4~32位</i></label><input type="text" id="edNewPwd" maxlength="32" style="width:100%;padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);font-size:14px;"></div>
+        <div style="flex:1;min-width:170px;"><label style="font-size:12.5px;color:var(--dim2);display:block;margin-bottom:6px;">确认 CONFIRM</label><input type="text" id="edNewPwd2" maxlength="32" style="width:100%;padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);font-size:14px;"></div>
+        <button class="btn primary" id="edPwdSave">保存新密码 <i class="en">Save</i></button>
+        <button class="btn" id="edPwdCancel">取消 <i class="en">Cancel</i></button>
+        <span class="mini" id="edPwdMsg"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Admin password gate for data-correction backend -->
+<div class="overlay" id="pwdOverlay">
+  <div class="modal" style="width:min(440px,92vw);">
+    <h2>后台管理密码 <i class="en">Admin Password</i></h2>
+    <p>「上传数据」与「数据修正」共用本密码，修改后台数据需先解锁。<br><span class="en" style="opacity:.72">Uploading and editing backend data share this password. Enter it to continue.</span></p>
+    <div class="field">
+      <label>密码 PASSWORD</label>
+      <input type="password" id="pwdInput" placeholder="请输入密码" style="width:100%;padding:11px 13px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);font-size:15px;">
+    </div>
+    <div class="mini" id="pwdErr" style="color:#ff9c8a;min-height:18px;margin:-2px 0 6px;"></div>
+    <div class="actions">
+      <button class="btn primary" id="pwdUnlock">解锁 <i class="en">Unlock</i></button>
+      <span style="flex:1"></span>
+      <button class="btn" id="pwdCancel">取消 <i class="en">Cancel</i></button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Trend play (fullscreen rotation) -->
+<div id="playOverlay">
+  <div class="play-top">
+    <div class="brand play-brand">
+      <div class="logo"><img src="./assets/eastern-steel-logo-full.png" alt="東鋼集團有限公司 EASTERN STEEL SDN. BHD." onerror="this.style.display='none'"></div>
+      <div class="title">
+        <h1>500T/D 麦尔兹石灰窑测温数据可视化看板<span class="t-en">500T/D MAERZ LIME KILN TEMPERATURE VISUALIZATION DASHBOARD</span></h1>
+        <p>多年度 · 多测温点位 · 多通道 趋势监测分析平台 · MULTI-YEAR · MULTI-POINT · MULTI-CHANNEL</p>
+      </div>
+    </div>
+    <span class="play-now" id="playNow">—</span>
+    <div class="play-tools">
+      <span class="play-tip">点击图例可显示其他通道 <i class="en">Click legend to show more channels</i></span>
+      <div class="play-clock" id="playClock"></div>
+      <button class="btn sm play-step" id="playPrev">‹ 上一个 <i class="en">Prev</i></button>
+      <button class="btn sm primary play-step" id="playToggle">⏸ 暂停 <i class="en">Pause</i></button>
+      <button class="btn sm play-step" id="playNext">下一个 <i class="en">Next</i> ›</button>
+      <button class="btn sm" id="playSettingsBtn">⚙ 设置 <i class="en">Setup</i></button>
+      <button class="btn sm" id="playClose">✕ 退出 <i class="en">Exit</i></button>
+    </div>
+  </div>
+  <div class="play-mid">
+    <div class="play-chart" id="playChartHost"><div id="playChart"></div></div>
+    <div class="play-grid" id="playGrid"></div>
+    <div class="play-big" id="playBig">
+      <div class="play-big-head">
+        <button class="play-back" id="playBack">‹ 返回同屏 <i class="en">Back</i></button>
+        <span class="play-big-cap" id="playBigCap"></span>
+      </div>
+      <div id="playBigChart"></div>
+    </div>
+    <div class="play-side" id="playSide">
+      <h4>播放模式 <i class="en">Mode</i></h4>
+      <div class="chips" id="playModeChips">
+        <div class="chip on" data-mode="single">单图轮播 <span class="en">Single</span></div>
+        <div class="chip" data-mode="grid">多图同屏 <span class="en">Grid</span></div>
+      </div>
+      <h4 style="margin-top:16px;">选择点位 <i class="en">Select points</i></h4>
+      <div class="mini" id="playSelNote">单图轮播：勾选任意数量点位（可全选），开始后逐张满屏播放（默认仅显示第一条通道，点图例叠加其他通道）。<br><span class="en" style="opacity:.72">Single: pick any points; each plays full-screen in turn (first channel only by default, click legend to add more).</span></div>
+      <div class="chips" id="playChips"></div>
+      <div class="play-hint" id="playHint"></div>
+      <h4 style="margin-top:16px;">切换速度 <i class="en">Interval</i></h4>
+      <div class="chips" id="playSpeedChips"></div>
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12.5px;color:var(--dim);margin-top:14px;">
+        <input type="checkbox" id="playGridRot" checked> 图内轮播（各图轮流显示所分配点位）<i class="en" style="font-size:10px;">In-chart rotation</i>
+      </label>
+      <div class="actions" style="margin-top:16px;justify-content:flex-start;display:flex;gap:8px;">
+        <button class="btn sm primary" id="playStart">▶ 开始播放 <i class="en">Start</i></button>
+        <button class="btn sm" id="playSelAll6">全选 <i class="en">All</i></button>
+      </div>
+    </div>
+  </div>
+  <div class="play-dots" id="playDots"></div>
+</div>
+
+<script src="./data.js"></script>
+<script>
+"use strict";
+/* ============ State ============ */
+const RAW = window.KILN_DATA;
+let DB = JSON.parse(JSON.stringify(RAW)); // deep clone working copy
+let GMAP = {};
+function indexGroups(){ GMAP={}; DB.groups.forEach(g=>GMAP[g.id]=g); }
+indexGroups();
+
+let ALL_DATES=[], YM_ALL=[], YEARS_ALL=[];
+function recomputeDates(){
+  ALL_DATES=[...new Set(DB.records.map(r=>r.d))].sort();
+  YM_ALL=[...new Set(ALL_DATES.map(ymOf))].sort();
+  YEARS_ALL=[...new Set(ALL_DATES.map(yOf))].sort();
+}
+recomputeDates();
+
+const LATEST_YM=YM_ALL[YM_ALL.length-1];
+const state = {
+  years: new Set([yOf(LATEST_YM)]),        // 默认仅最新月份所在年份
+  months: new Set([LATEST_YM]),            // 默认显示最新月份数据趋势图
+  groups: new Set([DB.groups[0].id]),      // 默认仅显示第一个点位，其余用户自行勾选
+  exScope:'filtered', exFmt:'xlsx', upMode:'merge', saveMode:'backend'
+};
+
+/* ============ Helpers ============ */
+function ymOf(d){return d.slice(0,7);}
+function yOf(d){return d.slice(0,4);}
+function pad(n){return String(n).padStart(2,'0');}
+function fmtDate(d){return d.replace(/-/g,'/');}
+function toggleSet(set,v){ if(set.has(v)) set.delete(v); else set.add(v); if(set.size===0){set.add(v);} }
+function filterRecs(recs){
+  return recs.filter(r=>state.years.has(yOf(r.d)) && state.months.has(ymOf(r.d)) && state.groups.has(r.p));
+}
+function toast(msg,ok){
+  const t=document.getElementById('toast');
+  t.innerHTML=(ok?'<span class="ok">✓ </span>':'')+msg;
+  t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600);
+}
+function isInViewport(el){const r=el.getBoundingClientRect();return r.top<window.innerHeight&&r.bottom>0;}
+
+/* ============ Color palettes ============ */
+const PALETTE=['#36CFC9','#597EF7','#FFC53D','#FF7A45','#9254DE','#73D13D','#36CFC9','#40A9FF','#F759AB','#B37FEB','#5CDBD3','#FFA940','#597EF7','#73D13D'];
+function randColor(){return '#'+Math.floor(Math.random()*0xffffff).toString(16).padStart(6,'0');}
+
+/* ============ Build chips (ONCE) ============ */
+const yearChips=document.getElementById('yearChips');
+const monthChips=document.getElementById('monthChips');
+const pointChips=document.getElementById('pointChips');
+const chanHost=document.getElementById('chanHost');
+function mkChip(text,on){const c=document.createElement('div');c.className='chip'+(on?' on':'');if(text)c.textContent=text;return c;}
+/* 点位英文名（简洁版，用于 UI 标注；与 data.js 的 en 字段一致含义） */
+const GEN={'G1':'Tunnel Fire-Hole Ch.1','G2':'Tunnel Fire-Hole Ch.2','G3':'Suspension Outlet Ch.1','G4':'Suspension Outlet Ch.2','G5':'Lance Shell Ch.1','G6':'Lance Shell Ch.2','G7':'Ash Platform Ch.1','G8':'Ash Platform Ch.2','G9':'Kiln-top Exhaust Ch.1','G10':'Kiln-top Exhaust Ch.2','G11':'Product Cooling Fan','G12':'Combustion Air','G13':'Suspension Cooling Fan','G14':'Lance Cooling Fan'};
+
+function buildChips(){
+  yearChips.innerHTML='';
+  YEARS_ALL.forEach(y=>{
+    const c=mkChip(y+'年', state.years.has(y)); c.dataset.y=y;
+    c.onclick=()=>{ toggleSet(state.years,y); c.classList.toggle('on'); refreshMonthDim(); scheduleApply(); };
+    yearChips.appendChild(c);
+  });
+  monthChips.innerHTML='';
+  YM_ALL.forEach(m=>{
+    const c=mkChip(m.slice(5)+'月', state.months.has(m)); c.title=m;
+    if(!YEARS_ALL.some(y=>y===m.slice(0,4)&&state.years.has(y))) c.style.opacity=.35;
+    c.onclick=()=>{ toggleSet(state.months,m); state.years.add(m.slice(0,4)); c.classList.toggle('on');
+      [...yearChips.children].forEach(yc=>yc.classList.toggle('on', state.years.has(yc.dataset.y)));
+      refreshMonthDim(); scheduleApply(); };
+    monthChips.appendChild(c);
+  });
+  pointChips.innerHTML='';
+  DB.groups.forEach(g=>{
+    const c=mkChip('', state.groups.has(g.id));
+    c.className='chip pchip'+(state.groups.has(g.id)?' on':'');
+    c.dataset.gid=g.id;
+    c.style.setProperty('--c',g.color);
+    c.innerHTML='<span class="dot"></span>'+g.short+' <span class="en" style="opacity:.55">'+(GEN[g.id]?GEN[g.id]+' · ':'')+g.chans.length+'ch</span>';
+    c.onclick=()=>onGroupToggle(g.id);
+    pointChips.appendChild(c);
+  });
+  buildChanPointChips();
+  refreshMonthDim();
+  updateCurRange();
+}
+function buildChanPointChips(){
+  const host=document.getElementById('chanPointChips'); if(!host) return;
+  host.innerHTML='';
+  DB.groups.forEach(g=>{
+    const c=mkChip('', state.groups.has(g.id));
+    c.className='chip pchip'+(state.groups.has(g.id)?' on':'');
+    c.dataset.gid=g.id;
+    c.style.setProperty('--c',g.color);
+    c.innerHTML='<span class="dot"></span>'+g.short+(GEN[g.id]?' <span class="en" style="opacity:.55">'+GEN[g.id]+'</span>':'');
+    c.onclick=()=>onGroupToggle(g.id);
+    host.appendChild(c);
+  });
+}
+function onGroupToggle(gid){
+  toggleSet(state.groups,gid);
+  const on=state.groups.has(gid);
+  document.querySelectorAll('.pchip[data-gid="'+gid+'"]').forEach(ch=>ch.classList.toggle('on',on));
+  const card=document.querySelector('.card[data-gid="'+gid+'"]');
+  if(card) card.style.display = on?'':'none';
+  if(on){
+    const el=document.getElementById('cchart_'+gid);
+    if(el && isInViewport(el)) renderChannelChart(gid);
+  }
+  scheduleApply();
+}
+function syncGroupUI(){
+  DB.groups.forEach(g=>{
+    const on=state.groups.has(g.id);
+    document.querySelectorAll('.pchip[data-gid="'+g.id+'"]').forEach(ch=>ch.classList.toggle('on',on));
+    const card=document.querySelector('.card[data-gid="'+g.id+'"]'); if(card) card.style.display=on?'':'none';
+  });
+  updateCurRange();
+}
+document.getElementById('chanAll').onclick=()=>{ DB.groups.forEach(g=>state.groups.add(g.id)); syncGroupUI(); scheduleApply(); };
+document.getElementById('chanNone').onclick=()=>{ state.groups.clear(); syncGroupUI(); scheduleApply(); };
+function refreshMonthDim(){
+  [...monthChips.children].forEach(c=>{
+    const m=c.title, y=m.slice(0,4);
+    c.style.opacity=(state.years.has(y))?1:.35;
+  });
+}
+
+/* ============ KPIs ============ */
+function renderKPIs(){
+  const recs=filterRecs(DB.records);
+  const dates=recs.map(r=>r.d).sort();
+  const avg=recs.length?(recs.reduce((s,r)=>s+r.m,0)/recs.length):0;
+  const loAll=recs.length?Math.min(...recs.map(r=>r.lo)):0;
+  const hiAll=recs.length?Math.max(...recs.map(r=>r.hi)):0;
+  const selGroups=DB.groups.filter(g=>state.groups.has(g.id));
+  const chCount=selGroups.reduce((s,g)=>s+g.chans.length,0);
+  const items=[
+    {cls:'acc',lab:'测温点位 <span class="en">Points</span>',val:state.groups.size,unit:'/'+DB.groups.length,sub:'共 '+DB.groups.length+' 个监测点<span class="en"> total</span>',glyph:'📍'},
+    {cls:'blue',lab:'测温通道 <span class="en">Channels</span>',val:chCount,unit:'条',sub:'所选点位通道数<span class="en">selected</span>',glyph:'🧩'},
+    {cls:'',lab:'数据时间跨度 <span class="en">Time Span</span>',val:dates.length?'<span style="font-size:19px;font-weight:800;letter-spacing:0;">'+fmtDate(dates[0]).slice(0,7)+' → '+fmtDate(dates[dates.length-1]).slice(0,7)+'</span>':'—',unit:'',sub:dates.length?(fmtDate(dates[0])+' → '+fmtDate(dates[dates.length-1])+'<span class="en"> range</span>'):'无数据',glyph:'🗓'},
+    {cls:'gold',lab:'测温记录数 <span class="en">Records</span>',val:recs.length,unit:'条',sub:'日·点位 维度<span class="en">day·point</span>',glyph:'📑'},
+    {cls:'pur',lab:'平均温度 <span class="en">Avg Temp</span>',val:avg.toFixed(1),unit:'℃',sub:'所选范围内日均值<span class="en">mean of range</span>',glyph:'🌡'},
+  ];
+  const box=document.getElementById('kpis'); box.innerHTML='';
+  items.forEach((it,i)=>{
+    const el=document.createElement('div'); el.className='kpi '+it.cls;
+    el.innerHTML='<div class="glyph">'+it.glyph+'</div><div class="lab">'+it.lab+'</div>'+
+      '<div class="val">0<small>'+it.unit+'</small></div><div class="sub">'+it.sub+'</div>';
+    box.appendChild(el);
+    const valEl=box.children[i].querySelector('.val');
+    valEl.innerHTML=it.val+(it.unit?'<small>'+it.unit+'</small>':'');
+  });
+}
+function updateCurRange(){
+  const recs=filterRecs(DB.records);
+  document.getElementById('curRange').textContent='当前范围 Current range：'+[...state.years].sort().join('/')+' 年Y · '+state.months.size+' 月M · '+state.groups.size+' 点位P · '+recs.length+' 条rec';
+}
+
+/* ============ Charts ============ */
+const ALL_CHARTS={};
+let summaryChart,heatChart,rangeChart,radarChart;
+function initCharts(){
+  summaryChart=echarts.init(document.getElementById('trendChart')); ALL_CHARTS['trendChart']=summaryChart;
+  heatChart=echarts.init(document.getElementById('heatChart'));   ALL_CHARTS['heatChart']=heatChart;
+  rangeChart=echarts.init(document.getElementById('rangeChart'));  ALL_CHARTS['rangeChart']=rangeChart;
+  radarChart=echarts.init(document.getElementById('radarChart'));  ALL_CHARTS['radarChart']=radarChart;
+  window.addEventListener('resize',resizeAll);
+  document.addEventListener('fullscreenchange',()=>{
+    const isDocFs=!!document.fullscreenElement && document.fullscreenElement===document.documentElement;
+    document.body.classList.toggle('fs',isDocFs);
+    setTimeout(resizeAll,220);
+  });
+}
+function resizeAll(){ Object.values(ALL_CHARTS).forEach(c=>c&&c.resize()); if(playChart) playChart.resize(); Object.values(gridCharts).forEach(c=>c&&c.resize()); if(playBigChart) playBigChart.resize(); }
+/* 容器尺寸一变（最大化/还原/切窗口/切标签页回来）图表立即铺满，杜绝 canvas 残留旧尺寸 */
+const _chartRO=new ResizeObserver(es=>{
+  requestAnimationFrame(()=>{ for(const en of es){
+    const el=en.target; if(!el || !el.isConnected) continue;
+    const inst=echarts.getInstanceByDom(el);
+    if(inst && !inst.isDisposed()) inst.resize();
+  }});
+});
+const _origEchartsInit=echarts.init.bind(echarts);
+echarts.init=function(dom,...rest){ const inst=_origEchartsInit(dom,...rest); try{_chartRO.observe(dom);}catch(e){} return inst; };
+
+const AXIS_STYLE={axisLine:{lineStyle:{color:'rgba(255,255,255,.25)'}},axisLabel:{color:'#dce8ff'},splitLine:{lineStyle:{color:'rgba(255,255,255,.06)'}},axisTick:{show:false}};
+const TT_STYLE={backgroundColor:'rgba(10,20,46,.95)',borderColor:'rgba(120,180,255,.4)',textStyle:{color:'#eaf1ff'},extraCssText:'border-radius:10px;backdrop-filter:blur(6px);'};
+
+function filterGseries(gid){
+  return (DB.gseries[gid]||[]).filter(x=>state.years.has(yOf(x.d))&&state.months.has(ymOf(x.d)));
+}
+
+function renderSummary(){
+  const groups=DB.groups.filter(g=>state.groups.has(g.id));
+  const dateSet=new Set();
+  groups.forEach(g=>filterGseries(g.id).forEach(x=>dateSet.add(x.d)));
+  const dates=[...dateSet].sort();
+  const series=groups.map(g=>{
+    const map={}; filterGseries(g.id).forEach(x=>map[x.d]=x.m);
+    return {
+      name:g.short, type:'line', smooth:false, showSymbol:false, symbol:'circle', symbolSize:6,
+      emphasis:{focus:'series'}, lineStyle:{width:2.2,color:g.color},
+      itemStyle:{color:g.color},
+      data:dates.map(d=>map[d]!=null?map[d]:null)
+    };
+  });
+  summaryChart.setOption({
+    backgroundColor:'transparent',
+    tooltip:Object.assign({trigger:'axis',order:'valueDesc'},TT_STYLE),
+    legend:{data:groups.map(g=>g.short),textStyle:{color:'#cfe0ff'},top:0,type:'scroll',icon:'roundRect'},
+    grid:{left:46,right:18,top:42,bottom:64},
+    xAxis:Object.assign({type:'category',data:dates.map(fmtDate),boundaryGap:false},AXIS_STYLE),
+    yAxis:Object.assign({type:'value',name:'温度 ℃',scale:true,nameTextStyle:{color:'#dce8ff'}},AXIS_STYLE),
+    dataZoom:[{type:'inside'},{type:'slider',height:18,bottom:22,borderColor:'rgba(255,255,255,.1)',textStyle:{color:'#dce8ff'},
+      dataBackground:{lineStyle:{color:'#597ef7'},areaStyle:{color:'rgba(89,126,247,.2)'}}}],
+    series
+  },true);
+  document.getElementById('trendSub').textContent='共 '+dates.length+' 天 · '+groups.length+' 点位';
+}
+
+function renderHeat(){
+  const recs=filterRecs(DB.records);
+  const months=YM_ALL.filter(m=>state.months.has(m));
+  const groups=DB.groups.filter(g=>state.groups.has(g.id));
+  const agg={};
+  recs.forEach(r=>{const k=r.p+'|'+ymOf(r.d); (agg[k]=agg[k]||[]).push(r.m);});
+  const data=[]; let vmin=Infinity,vmax=-Infinity;
+  groups.forEach((g,yi)=>{
+    months.forEach((m,xi)=>{
+      const arr=agg[g.id+'|'+m];
+      if(arr&&arr.length){const v=arr.reduce((a,b)=>a+b,0)/arr.length; data.push([xi,yi,+v.toFixed(1)]); vmin=Math.min(vmin,v);vmax=Math.max(vmax,v);}
+      else data.push([xi,yi,'-']);
+    });
+  });
+  if(!isFinite(vmin)){vmin=0;vmax=100;}
+  heatChart.setOption({
+    backgroundColor:'transparent',
+    tooltip:Object.assign({position:'top'},TT_STYLE),
+    grid:{left:140,right:18,top:14,bottom:92},
+    xAxis:Object.assign({type:'category',data:months.map(m=>m.slice(5)+'月'),splitArea:{show:true}},AXIS_STYLE),
+    yAxis:Object.assign({type:'category',data:groups.map(g=>g.short),splitArea:{show:true}},AXIS_STYLE),
+    visualMap:{min:Math.floor(vmin),max:Math.ceil(vmax),calculable:true,orient:'horizontal',left:'center',bottom:4,
+      itemWidth:13,itemHeight:170,textStyle:{color:'#dce8ff',fontSize:11},inRange:{color:['#1d3a8a','#36cfc9','#ffd666','#ff9c3d','#ff4d4f']}},
+    series:[{type:'heatmap',data,label:{show:false},
+      emphasis:{itemStyle:{shadowBlur:10,shadowColor:'rgba(255,255,255,.5)'}}}]
+  },true);
+  // custom tooltip for heatmap (axis order)
+  heatChart.setOption({tooltip:{formatter:p=>{
+    const gi=p.value[1], mi=p.value[0];
+    const g=groups[gi], m=months[mi];
+    return (g?g.short:'')+' · '+(m?m.slice(5)+'月':'')+'<br/>平均温度：<b>'+(typeof p.value[2]==='number'?p.value[2]+'℃':'—')+'</b>';
+  }}},false);
+}
+
+function renderRange(){
+  const recs=filterRecs(DB.records);
+  const groups=DB.groups.filter(g=>state.groups.has(g.id));
+  const data=[];
+  groups.forEach((g,i)=>{
+    const rs=recs.filter(r=>r.p===g.id);
+    if(rs.length){const lo=Math.min(...rs.map(r=>r.lo)),hi=Math.max(...rs.map(r=>r.hi)),av=rs.reduce((a,b)=>a+b.m,0)/rs.length;
+      data.push([i,lo,+av.toFixed(1),hi,g.color,g.short]);}
+  });
+  rangeChart.setOption({
+    backgroundColor:'transparent',
+    tooltip:Object.assign({formatter:p=>{const d=p.data;return d[5]+'<br/>最低：'+d[1]+'℃<br/>均值：<b>'+d[2]+'℃</b><br/>最高：'+d[3]+'℃';}},TT_STYLE),
+    grid:{left:150,right:24,top:14,bottom:28},
+    xAxis:Object.assign({type:'value',name:'℃',scale:true,nameTextStyle:{color:'#dce8ff'}},AXIS_STYLE),
+    yAxis:Object.assign({type:'category',data:data.map(d=>d[5]),inverse:true},AXIS_STYLE),
+    series:[{type:'custom',
+      renderItem:(params,api)=>{
+        const i=api.value(0),lo=api.value(1),av=api.value(2),hi=api.value(3);
+        const c=api.value(4);
+        const x0=api.coord([lo,i])[0], x1=api.coord([hi,i])[0], xa=api.coord([av,i])[0];
+        const y=api.coord([lo,i])[1], h=api.size([0,1])[1]*0.42;
+        return {type:'group',children:[
+          {type:'rect',shape:{x:x0,y:y-h/2,width:Math.max(2,x1-x0),height:h,r:5},style:{fill:c,opacity:.28}},
+          {type:'rect',shape:{x:x0,y:y-h/2,width:Math.max(2,x1-x0),height:h,r:5},style:{stroke:c,lineWidth:1.4,opacity:.9}},
+          {type:'circle',shape:{cx:xa,cy:y,r:5.5},style:{fill:c,shadowColor:c,shadowBlur:10}},
+          {type:'text',style:{x:xa,y:y-h/2-9,text:av+'℃',fill:'#eaf1ff',font:'600 11px sans-serif',textAlign:'center'}}
+        ]};
+      },
+      encode:{x:[1,3],y:0}, data
+    }]
+  },true);
+}
+
+function renderRadar(){
+  const recs=filterRecs(DB.records);
+  const groups=DB.groups.filter(g=>state.groups.has(g.id));
+  const stats=groups.map(g=>{
+    const rs=recs.filter(r=>r.p===g.id);
+    const av=rs.length?rs.reduce((a,b)=>a+b.m,0)/rs.length:0;
+    const hi=rs.length?Math.max(...rs.map(r=>r.hi)):0;
+    const lo=rs.length?Math.min(...rs.map(r=>r.lo)):0;
+    const spread=hi-lo;
+    return {g,av,hi,lo,spread};
+  });
+  const maxAv=Math.max(1,...stats.map(s=>s.av));
+  const maxHi=Math.max(1,...stats.map(s=>s.hi));
+  const maxSp=Math.max(1,...stats.map(s=>s.spread));
+  radarChart.setOption({
+    backgroundColor:'transparent',
+    tooltip:Object.assign({},TT_STYLE),
+    legend:{data:groups.map(g=>g.short),textStyle:{color:'#cfe0ff'},top:0,type:'scroll',icon:'roundRect'},
+    radar:{indicator:[{name:'平均温度',max:maxAv*1.1},{name:'峰值温度',max:maxHi*1.1},{name:'波动幅度',max:maxSp*1.1}],
+      center:['50%','58%'],radius:'66%',
+      axisName:{color:'#cfe0ff'},splitLine:{lineStyle:{color:'rgba(255,255,255,.12)'}},
+      splitArea:{areaStyle:{color:['rgba(255,255,255,.02)','rgba(255,255,255,.05)']}},
+      axisLine:{lineStyle:{color:'rgba(255,255,255,.18)'}}},
+    series:[{type:'radar',
+      data:stats.map(s=>({name:s.g.short,value:[+s.av.toFixed(1),+s.hi.toFixed(1),+s.spread.toFixed(1)],
+        lineStyle:{color:s.g.color,width:2},itemStyle:{color:s.g.color},areaStyle:{color:s.g.color,opacity:.12}}))
+    }]
+  },true);
+}
+
+/* ============ Per-group channel charts (lazy) ============ */
+const renderedGids=new Set();
+let io=null;
+function rebuildChannelCards(){
+  renderedGids.clear();
+  document.querySelectorAll('body > .card.maximized').forEach(c=>c.remove());
+  document.body.classList.remove('has-max');
+  chanHost.innerHTML='';
+  DB.groups.forEach(g=>{
+    const card=document.createElement('div'); card.className='card'; card.dataset.gid=g.id;
+    if(!state.groups.has(g.id)) card.style.display='none';
+    card.innerHTML='<div class="chead"><div class="ct">'+g.cn+' <i class="en">'+g.en+'</i> · '+g.chans.length+' 通道<span class="en"> channels</span></div>'+
+      '<div style="display:flex;align-items:center;gap:8px;"><div class="cs"></div><button class="fs-mini ed-open" data-gid="'+g.id+'" title="修正数据 Edit">✎</button><button class="fs-mini" title="全屏 Fullscreen">⛶</button></div></div>'+
+      '<div class="chart sm" id="cchart_'+g.id+'"></div>';
+    chanHost.appendChild(card);
+  });
+  if(io){ DB.groups.forEach(g=>{ const el=document.getElementById('cchart_'+g.id); if(el) io.observe(el); }); }
+}
+/* 各点位通道趋势图：默认仅显示第一条通道，用户点图例自行叠加（选择跨重渲染保留） */
+const chanSelUser={};
+function chanSelFor(gid,chans){
+  if(chanSelUser[gid]) return chanSelUser[gid];
+  const sel={}; chans.forEach((c,i)=>sel[c.short]=(i===0)); return sel;
+}
+function buildChannelOption(gid){
+  const g=GMAP[gid]; if(!g) return null;
+  const chans=g.chans;
+  const dateSet=new Set();
+  chans.forEach(c=>(DB.cseries[c.id]||[]).forEach(x=>{ if(state.years.has(yOf(x.d))&&state.months.has(ymOf(x.d))) dateSet.add(x.d); }));
+  const dates=[...dateSet].sort();
+  const series=chans.map(c=>{
+    const map={}; (DB.cseries[c.id]||[]).forEach(x=>{ if(state.years.has(yOf(x.d))&&state.months.has(ymOf(x.d))) map[x.d]=x.v; });
+    return {
+      name:c.short, type:'line', smooth:false, showSymbol:false, symbolSize:5, sampling:'lttb',
+      emphasis:{focus:'series'}, lineStyle:{width:1.8,color:c.color}, itemStyle:{color:c.color},
+      data:dates.map(d=>map[d]!=null?map[d]:null)
+    };
+  });
+  return {dates,series,chans};
+}
+function renderChannelChart(gid){
+  const g=GMAP[gid]; if(!g) return;
+  const el=document.getElementById('cchart_'+gid); if(!el) return;
+  let ech=ALL_CHARTS['cchart_'+gid];
+  if(!ech){ ech=echarts.init(el); ALL_CHARTS['cchart_'+gid]=ech; }
+  if(!ech.__selHook){ ech.__selHook=1; ech.on('legendselectchanged',e=>{ chanSelUser[gid]=e.selected; }); }
+  const o=buildChannelOption(gid); if(!o) return;
+  ech.setOption({
+    backgroundColor:'transparent',
+    tooltip:Object.assign({trigger:'axis',order:'valueDesc'},TT_STYLE),
+    legend:{data:o.chans.map(c=>c.short),textStyle:{color:'#cfe0ff'},top:0,type:'scroll',icon:'roundRect',pageTextStyle:{color:'#dce8ff'},selected:chanSelFor(gid,o.chans)},
+    grid:{left:46,right:16,top:42,bottom:54},
+    xAxis:Object.assign({type:'category',data:o.dates.map(fmtDate),boundaryGap:false},AXIS_STYLE),
+    yAxis:Object.assign({type:'value',name:'℃',scale:true,nameTextStyle:{color:'#dce8ff'}},AXIS_STYLE),
+    dataZoom:[{type:'inside'},{type:'slider',height:16,bottom:18,borderColor:'rgba(255,255,255,.1)',textStyle:{color:'#dce8ff'},
+      dataBackground:{lineStyle:{color:'#597ef7'},areaStyle:{color:'rgba(89,126,247,.2)'}}}],
+    series:o.series
+  },true);
+  const cs=el.closest('.card').querySelector('.cs'); if(cs) cs.textContent=o.chans.length+' 通道 · '+o.dates.length+' 天';
+  renderedGids.add(gid);
+}
+
+/* ============ Table (single innerHTML string) ============ */
+let sortKey='d',sortDir=1;
+function renderTable(){
+  const recs=filterRecs(DB.records).slice();
+  recs.sort((a,b)=>{let x=a[sortKey],y=b[sortKey]; if(sortKey==='p'){x=GMAP[a.p].short;y=GMAP[b.p].short;} return (x>y?1:x<y?-1:0)*sortDir;});
+  const limit=800; const shown=recs.slice(0,limit);
+  let html='';
+  shown.forEach(r=>{
+    const g=GMAP[r.p];
+    html+='<tr><td>'+fmtDate(r.d)+'</td>'+
+      '<td><span class="pill"><span class="dot" style="background:'+g.color+'"></span>'+g.short+'</span></td>'+
+      '<td><b>'+r.m.toFixed(1)+'</b></td>'+
+      '<td class="tag-lo">'+r.lo+'</td>'+
+      '<td class="tag-hi">'+r.hi+'</td>'+
+      '<td>'+r.n+'</td></tr>';
+  });
+  document.querySelector('#dataTbl tbody').innerHTML=html;
+}
+
+/* ============ Apply filters (debounced) ============ */
+let _applyT=null;
+function scheduleApply(){ if(_applyT) clearTimeout(_applyT); _applyT=setTimeout(applyFilters,110); }
+function applyFilters(){
+  renderKPIs();
+  renderSummary(); renderHeat(); renderRange(); renderRadar();
+  renderTable(); updateCurRange();
+  renderedGids.forEach(gid=>{ if(state.groups.has(gid)) renderChannelChart(gid); });
+}
+
+/* ============ Fullscreen (in-page maximize, works in iframe) ============ */
+function maximizeCard(card,b){
+  if(card._max) return;
+  card._max=true; card._origParent=card.parentNode; card._origNext=card.nextSibling;
+  document.body.appendChild(card);                 // detach from ancestor (avoids backdrop-filter containing-block)
+  card.classList.add('maximized'); document.body.classList.add('has-max');
+  if(b){ b.textContent='⤡'; b.title='退出全屏 Exit'; }
+}
+function unmaximizeCard(card){
+  if(!card._max) return; card._max=false;
+  card.classList.remove('maximized'); document.body.classList.remove('has-max');
+  const x=card.querySelector('.fs-mini'); if(x){x.textContent='⛶';x.title='全屏 Fullscreen';}
+  if(card._origParent){
+    if(card._origNext && card._origNext.parentNode===card._origParent) card._origParent.insertBefore(card,card._origNext);
+    else card._origParent.appendChild(card);
+  }
+  card._origParent=null; card._origNext=null;
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.fs-mini'); if(!b) return;
+  const card=b.closest('.card'); if(!card) return;
+  if(card._max){ unmaximizeCard(card); }
+  else{
+    document.querySelectorAll('.card.maximized').forEach(m=>unmaximizeCard(m));
+    maximizeCard(card,b);
+  }
+  setTimeout(resizeAll,200);
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    const m=document.querySelector('.card.maximized');
+    if(m){ unmaximizeCard(m); setTimeout(resizeAll,160); }
+  }
+});
+document.getElementById('btnFs').onclick=()=>{
+  if(!document.fullscreenElement){document.documentElement.requestFullscreen().catch(()=>{});}
+  else{document.exitFullscreen();}
+};
+
+/* ============ Clock ============ */
+function tick(){const d=new Date();const p=n=>String(n).padStart(2,'0');
+  const date=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+  const time=p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
+  document.getElementById('clock').innerHTML='<span class="cdate">'+date+'</span><span class="ctime">'+time+'</span>';
+  const pc=document.getElementById('playClock');
+  if(pc) pc.innerHTML='<span class="cdate">'+date+'</span><span class="ctime">'+time+'</span>';
+}
+setInterval(tick,1000);tick();
+
+/* ============ Upload ============ */
+let pendingFile=null;
+const KW=['膛','缸','孔','壳','Channel','Suspension','Spray','Kiln','chamber','outlet','ignition','gun','duct','exhaust','cooling','fan','cyclone','preheater','flue','hood','roof','dust','gas','燃烧','冷却','废气','风机','预热','烟','耐','Ash','discha','ash','platform'];
+function isPointName(s){if(typeof s!=='string')return false;const st=s.trim();if(st.length<3)return false;
+  if(!/[一-鿿]/.test(st))return false;
+  if(/测温表|kiln temperature gauge|日期|班次|date|Date|Exception|异常|汇总|合计|平均|温度℃|最高温度|最低温度/.test(st))return false;
+  return KW.some(k=>st.includes(k));}
+function parseYMFromName(fname){
+  const m=fname.match(/(\d{2,4})\s*年\.?\s*(\d{1,2})\s*月/);
+  if(!m) return [null,null];
+  let y=m[1]; y=(y.length===2?'20'+y:y); return [+y, +m[2]];
+}
+function dayFromSheet(name){let m=name.match(/(\d{1,2})\.(\d{1,2})/);if(m&&+m[2]<=31)return +m[2];
+  m=name.match(/^(\d{1,2})$/);if(m)return +m[1];return null;}
+function cnOf2(s){ if(typeof s!=='string'){ return (s===null||s===undefined)?'':String(s); } const m=s.match(/[一-鿿]+/); return m?m[0]:s; }
+
+/* channel-label acceptance: digits 1..20, directional CJK, or 南/北 */
+function isChannelLabel(lk){
+  if(/^[0-9]+$/.test(lk) && +lk>=1 && +lk<=20) return true;
+  if(/^[东南西北]+$/.test(lk)) return true;
+  if(lk==='南'||lk==='北') return true;
+  return false;
+}
+
+function parseWorkbook(ab, fileName, fallbackYear){
+  const wb=XLSX.read(ab,{type:'array'});
+  let [fy,fm]=parseYMFromName(fileName||'');
+  const tmp={}; // baseCn -> {cn, chans:{lk:[{d,v}]}}
+  function pushChannel(baseCn,lk,ds,vals){
+    if(!vals.length) return;
+    const g=tmp[baseCn]||(tmp[baseCn]={cn:baseCn,chans:{}});
+    const arr=g.chans[lk]||(g.chans[lk]=[]);
+    const mean=+(vals.reduce((s,v)=>s+v,0)/vals.length).toFixed(1);
+    arr.push({d:ds,v:mean});
+  }
+  wb.SheetNames.forEach(sn=>{
+    const ws=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:null,raw:true});
+    if(!ws.length) return;
+    const day=dayFromSheet(sn); if(day==null) return;
+    let Y=fy, M=fm;
+    if(Y==null){Y=fallbackYear||2026;}
+    if(M==null){const mm=sn.match(/(\d{1,2})\.(\d{1,2})/); M = mm?+mm[1]:1;}
+    const ds=Y+'-'+pad(M)+'-'+pad(day);
+    const headerIdx=[];
+    ws.forEach((row,ri)=>{ if(row && row.some(v=>isPointName(v))) headerIdx.push(ri); });
+    if(!headerIdx.length) return;
+    headerIdx.forEach((hi,k)=>{
+      const row=ws[hi]; if(!row) return;
+      const nameCols=[];
+      row.forEach((v,ci)=>{ if(isPointName(v)) nameCols.push([ci,String(v).trim()]); });
+      if(!nameCols.length) return;
+      const dataEnd=(k+1<headerIdx.length)? headerIdx[k+1]-1 : ws.length-1;
+      const lastCol=row.length-1;
+      nameCols.forEach(([col,name],j)=>{
+        const nxt=(j+1<nameCols.length)? nameCols[j+1][0] : lastCol+1;
+        const baseCn=cnOf2(name);
+        for(let c=col+1; c<nxt; c++){
+          const lab=row[c]; if(lab==null) continue;
+          const lk=cnOf2(lab);
+          if(!isChannelLabel(lk)) continue;
+          const vals=[];
+          for(let dr=hi+1; dr<=dataEnd; dr++){
+            const drow=ws[dr]||[];
+            const cv=drow[c]; if(typeof cv==='number'&&isFinite(cv)&&cv>0&&cv<2000) vals.push(+cv.toFixed(1));
+          }
+          pushChannel(baseCn,lk,ds,vals);
+        }
+      });
+    });
+  });
+  // build model
+  const groups=[], cseries={};
+  let gi=0;
+  Object.keys(tmp).forEach(cn=>{
+    gi++; const gid='G'+gi;
+    const g={id:gid,cn,en:'',short:cn,color:PALETTE[(gi-1)%PALETTE.length],chans:[]};
+    let ci=0;
+    Object.keys(tmp[cn].chans).forEach(lk=>{
+      ci++; const cid=gid+'C'+ci;
+      const c={id:cid,label:lk,cn:cn+'-'+lk,short:lk,color:PALETTE[(gi+ci)%PALETTE.length]};
+      g.chans.push(c);
+      cseries[cid]=tmp[cn].chans[lk].slice().sort((a,b)=>a.d<b.d?-1:1);
+    });
+    groups.push(g);
+  });
+  const needYear=(fy==null);
+  return {groups,cseries,needYear};
+}
+
+function buildAggregates(groups,cseries){
+  const gseries={}, records=[];
+  groups.forEach(g=>{
+    const byDay={};
+    g.chans.forEach(c=>{ (cseries[c.id]||[]).forEach(x=>{ (byDay[x.d]=byDay[x.d]||[]).push(x.v); }); });
+    const arr=[];
+    Object.keys(byDay).sort().forEach(d=>{
+      const a=byDay[d];
+      arr.push({d, m:+(a.reduce((s,v)=>s+v,0)/a.length).toFixed(1), lo:Math.min.apply(null,a), hi:Math.max.apply(null,a), n:a.length});
+    });
+    gseries[g.id]=arr;
+    arr.forEach(x=>records.push({d:x.d,p:g.id,m:x.m,lo:x.lo,hi:x.hi,n:x.n}));
+  });
+  return {gseries,records};
+}
+
+document.getElementById('btnUpload').onclick=()=>requireUnlock(()=>{
+  document.getElementById('fileInput').value='';
+  document.getElementById('yearFallbackField').style.display='none';
+  document.getElementById('upOverlay').classList.add('show');
+});
+document.getElementById('upCancel').onclick=()=>document.getElementById('upOverlay').classList.remove('show');
+document.getElementById('fileInput').onchange=e=>{
+  const f=e.target.files[0]; if(!f)return; pendingFile=f;
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    try{
+      const parsed=parseWorkbook(ev.target.result, pendingFile.name, (+document.getElementById('fallbackYear').value||2026));
+      pendingFile._parsed=parsed;
+      if(parsed.needYear){document.getElementById('yearFallbackField').style.display='block';}
+      else{document.getElementById('yearFallbackField').style.display='none';}
+      if(!parsed.groups.length){toast('未在该文件中识别到测温数据，请检查格式');}
+      else{toast('已解析 '+parsed.groups.length+' 个点位 / '+Object.keys(parsed.cseries).length+' 通道，点击确认导入',true);}
+    }catch(err){toast('解析失败：'+err.message);}
+  };
+  rd.readAsArrayBuffer(f);
+};
+document.querySelectorAll('#mergeSeg button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#mergeSeg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');state.upMode=b.dataset.m;
+});
+document.querySelectorAll('#saveSeg button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#saveSeg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');state.saveMode=b.dataset.s;
+});
+document.getElementById('upConfirm').onclick=()=>{
+  if(!pendingFile||!pendingFile._parsed){toast('请先选择文件');return;}
+  const parsed=pendingFile._parsed;
+  if(state.upMode==='replace'){
+    DB.groups=parsed.groups; DB.cseries=parsed.cseries;
+    const agg=buildAggregates(DB.groups,DB.cseries); DB.gseries=agg.gseries; DB.records=agg.records;
+  }else{
+    parsed.groups.forEach(pg=>{
+      let g=DB.groups.find(x=>x.cn===pg.cn);
+      if(!g){ g={id:'G'+(DB.groups.length+1),cn:pg.cn,en:'',short:pg.cn,color:randColor(),chans:[]}; DB.groups.push(g); }
+      pg.chans.forEach(pc=>{
+        let c=g.chans.find(x=>x.label===pc.label||x.cn===pc.cn);
+        if(!c){ c={id:g.id+'C'+(g.chans.length+1),label:pc.label,cn:pc.cn,short:pc.short,color:randColor()}; g.chans.push(c); }
+        const src=parsed.cseries[pc.id]||[];
+        const tgt=DB.cseries[c.id]||(DB.cseries[c.id]=[]);
+        src.forEach(x=>{ const ex=tgt.find(t=>t.d===x.d); if(ex)ex.v=x.v; else tgt.push({d:x.d,v:x.v}); });
+        tgt.sort((a,b)=>a.d<b.d?-1:1);
+      });
+    });
+    const agg=buildAggregates(DB.groups,DB.cseries); DB.gseries=agg.gseries; DB.records=agg.records;
+  }
+  indexGroups(); recomputeDates();
+  state.years=new Set(YEARS_ALL); state.months=new Set(YM_ALL); state.groups=new Set(DB.groups.map(g=>g.id));
+  rebuildChannelCards(); buildChips(); computeThresholds(); applyFilters(); updateNote();
+  document.getElementById('upOverlay').classList.remove('show');
+  toast('数据已更新：'+DB.records.length+' 条记录 / '+DB.groups.length+' 点位',true);
+  if(state.saveMode==='backend'){
+    saveToBackend();
+  }
+};
+function saveToBackend(){
+  if(!ADMIN_PWD){ requireUnlock(()=>saveToBackend()); return; }
+  toast('正在保存到后台…');
+  const payload={password:ADMIN_PWD,meta:Object.assign({},DB.meta,{importedAt:new Date().toISOString()}),groups:DB.groups,cseries:DB.cseries,gseries:DB.gseries,records:DB.records};
+  fetch('/api/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    .then(r=>r.json()).then(j=>{
+      if(handleNeedAuth(j,()=>saveToBackend())) return;
+      if(j.ok){ toast('已保存到后台，所有人打开看板都是最新数据（'+j.totalRecords+' 条 / '+j.groups+' 点位）',true); }
+      else { toast('后台保存失败：'+(j.error||'未知错误')+'（本机预览仍有效）'); }
+    }).catch(e=>{ toast('后台保存失败：'+e.message+'（本机预览仍有效）'); });
+}
+
+/* ============ Export ============ */
+document.getElementById('btnExport').onclick=()=>document.getElementById('exOverlay').classList.add('show');
+document.getElementById('exCancel').onclick=()=>document.getElementById('exOverlay').classList.remove('show');
+document.querySelectorAll('#exScope button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#exScope button').forEach(x=>x.classList.remove('on'));b.classList.add('on');state.exScope=b.dataset.s;});
+document.querySelectorAll('#exFmt button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#exFmt button').forEach(x=>x.classList.remove('on'));b.classList.add('on');state.exFmt=b.dataset.f;});
+document.getElementById('exConfirm').onclick=()=>{
+  const recs=state.exScope==='all'?DB.records:filterRecs(DB.records);
+  const rows=recs.map(r=>({日期:fmtDate(r.d),测温点位:GMAP[r.p].cn,平均温度:r.m,最低温度:r.lo,最高温度:r.hi,通道数:r.n}));
+  if(state.exFmt==='csv'){
+    const headers=['日期','测温点位','平均温度','最低温度','最高温度','通道数'];
+    const csv='\uFEFF'+headers.join(',')+'\n'+rows.map(r=>headers.map(h=>r[h]).join(',')).join('\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+    downloadBlob(blob,'麦尔兹窑测温数据_'+state.exScope+'.csv');
+  }else{
+    const ws=XLSX.utils.json_to_sheet(rows);
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'测温数据');
+    XLSX.writeFile(wb,'麦尔兹窑测温数据_'+state.exScope+'.xlsx');
+  }
+  document.getElementById('exOverlay').classList.remove('show');
+  toast('已导出 '+rows.length+' 条记录',true);
+};
+function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);}
+
+/* ============ Quick actions ============ */
+document.getElementById('selAll').onclick=()=>{
+  state.years=new Set(YEARS_ALL); state.months=new Set(YM_ALL); state.groups=new Set(DB.groups.map(g=>g.id));
+  document.querySelectorAll('#pointChips .card'); // noop
+  buildChips(); rebuildChannelCards(); applyFilters();
+};
+document.getElementById('selLatest').onclick=()=>{
+  const latest=YM_ALL[YM_ALL.length-1]; state.years=new Set([yOf(latest)]); state.months=new Set([latest]); state.groups=new Set(DB.groups.map(g=>g.id));
+  buildChips(); applyFilters();
+};
+document.getElementById('resetData').onclick=()=>{
+  DB=JSON.parse(JSON.stringify(RAW));
+  indexGroups(); recomputeDates();
+  state.years=new Set(YEARS_ALL);state.months=new Set(YM_ALL);state.groups=new Set(DB.groups.map(g=>g.id));
+  buildChips(); rebuildChannelCards(); computeThresholds(); applyFilters(); updateNote();
+  toast('已恢复为原始数据',true);
+};
+document.querySelectorAll('#dataTbl th').forEach(th=>th.onclick=()=>{
+  const k=th.dataset.k; if(sortKey===k)sortDir*=-1; else{sortKey=k;sortDir=1;} renderTable();
+});
+
+/* ============ Note (bilingual, dynamic) ============ */
+function updateNote(){
+  const np=DB.groups.length, nc=DB.groups.reduce((s,g)=>s+g.chans.length,0), nd=ALL_DATES.length;
+  const box=document.getElementById('noteBox'); if(!box) return;
+  box.innerHTML='说明：本看板数据由本地 Excel 原始记录（窑体测温记录 KILN TEMPERATURE GAUGE）自动解析生成，覆盖 '+np+' 个测温点位、'+nc+' 个测温通道、'+nd+' 个测温日；每个点位每日含多个测温通道（如通道拨火孔膛一含 18 个通道），表中“平均/最低/最高”为该点位当日全部通道的统计值。汇总趋势图每个点位一条线；下方各点位通道趋势图每个通道一条线。<br>'+
+    '<b>上传数据</b>：可导入新的或修正后的同格式 Excel，系统按“点位+通道+日期”自动解析并合并更新；'+
+    '<b>下载报表</b>：可将当前筛选结果导出为 Excel 或 CSV；'+
+    '<b>全屏展示</b>：点击右上角按钮进入沉浸式全屏（按 ESC 退出），每个图表右上角的 ⛶ 可单独放大。<br>'+
+    '<div class="note" style="margin-top:8px;color:#7e91bd;line-height:1.7;"><b>English:</b> Auto-parsed from local Excel (KILN TEMPERATURE GAUGE). '+np+' points, '+nc+' channels across '+nd+' days; each point has multiple channels (e.g. Channel ignition hole chamber one = 18 channels). The summary chart shows one line per point; the per-point charts show one line per channel. <b>Upload</b> merges new/corrected Excel; <b>Export</b> saves the current filter as Excel/CSV; <b>Fullscreen</b> immersive mode (ESC to exit); each chart\'s ⛶ enlarges it.</div>';
+}
+
+/* ============ Data-correction backend (edit raw values, persist to server) ============ */
+const THR={};                                   // per-group Tukey threshold for anomaly highlight
+function computeThrGroup(gid){
+  const g=GMAP[gid]; if(!g) return;
+  const vals=[];
+  g.chans.forEach(c=>(DB.cseries[c.id]||[]).forEach(x=>{ if(typeof x.v==='number'&&!isNaN(x.v)) vals.push(x.v); }));
+  if(!vals.length){ THR[gid]=Infinity; return; }
+  vals.sort((a,b)=>a-b);
+  const q=p=>{ let i=Math.round(p/100*(vals.length-1)); if(i<0)i=0; if(i>vals.length-1)i=vals.length-1; return vals[i]; };
+  const q1=q(25), q3=q(75);
+  THR[gid]=q3+1.5*(q3-q1);
+}
+function computeThresholds(){ DB.groups.forEach(g=>computeThrGroup(g.id)); }
+
+function recomputeGroup(cid){
+  const gid=(cid.match(/^G\d+/)||[])[0]; if(!gid) return; const g=GMAP[gid]; if(!g) return;
+  const byDay={};
+  g.chans.forEach(c=>(DB.cseries[c.id]||[]).forEach(x=>{ (byDay[x.d]=byDay[x.d]||[]).push(x.v); }));
+  const arr=[];
+  Object.keys(byDay).sort().forEach(d=>{ const a=byDay[d]; arr.push({d,m:+(a.reduce((s,v)=>s+v,0)/a.length).toFixed(1),lo:Math.min.apply(null,a),hi:Math.max.apply(null,a),n:a.length}); });
+  DB.gseries[gid]=arr;
+  DB.records=DB.records.filter(r=>r.p!==gid).concat(arr.map(x=>({d:x.d,p:gid,m:x.m,lo:x.lo,hi:x.hi,n:x.n})));
+}
+
+let edCid=null;
+function fillChannelSelect(gid){
+  const g=GMAP[gid]; if(!g) return;
+  document.getElementById('edChannel').innerHTML=g.chans.map(c=>'<option value="'+c.id+'">'+c.cn+'</option>').join('');
+}
+function openEditor(gid,cid){
+  computeThresholds();
+  const gs=document.getElementById('edGroup');
+  gs.innerHTML=DB.groups.map(g=>'<option value="'+g.id+'">'+g.short+'</option>').join('');
+  if(gid) gs.value=gid;
+  fillChannelSelect(gs.value);
+  if(cid) document.getElementById('edChannel').value=cid;
+  document.getElementById('editOverlay').classList.add('show');
+  renderEditTable();
+}
+function renderEditTable(){
+  const cid=document.getElementById('edChannel').value; if(!cid){document.querySelector('#edTbl tbody').innerHTML='';return;}
+  edCid=cid;
+  const gid=(cid.match(/^G\d+/)||[])[0]; const thr=THR[gid]||Infinity;
+  const rows=(DB.cseries[cid]||[]).slice();
+  const anomOnly=document.getElementById('edAnomOnly').checked;
+  let view=rows.filter(r=>!anomOnly||r.v>thr);
+  view.sort((a,b)=>{ const aa=a.v>thr?1:0,bb=b.v>thr?1:0; if(aa!==bb) return bb-aa; return b.v-a.v; });
+  const lim=view.slice(0,700);
+  let html='';
+  lim.forEach(r=>{
+    const an=r.v>thr;
+    html+='<tr'+(an?' style="background:rgba(255,77,79,.13)"':'')+'>'+
+      '<td>'+fmtDate(r.d)+'</td>'+
+      '<td><input class="edv" data-d="'+r.d+'" type="number" step="0.1" value="'+r.v+'" style="width:120px;padding:6px 9px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text);font-size:13px;"></td>'+
+      (an?'<td style="color:#ff9c8a;font-weight:600;">⚠ 异常</td>':'<td style="color:#7e91bd;">正常</td>')+
+      '</tr>';
+  });
+  document.querySelector('#edTbl tbody').innerHTML=html;
+  document.getElementById('edStatus').textContent='通道 '+GMAP[gid].short+' · 共 '+rows.length+' 天'+(anomOnly?' · 异常 '+view.length+' 条':' · 异常 '+(rows.filter(r=>r.v>thr).length)+' 条');
+}
+function saveEdit(inp){
+  const d=inp.dataset.d, cid=edCid;
+  let v=parseFloat(inp.value);
+  if(isNaN(v)){ toast('请输入有效数字'); return; }
+  v=+v.toFixed(1);
+  inp.disabled=true;
+  fetch('/api/edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channelId:cid,date:d,value:v,password:ADMIN_PWD})})
+    .then(r=>r.json()).then(j=>{
+      inp.disabled=false;
+      if(handleNeedAuth(j,()=>saveEdit(inp))) return;
+      if(j.ok){
+        const ex=(DB.cseries[cid]||[]).find(x=>x.d===d); if(ex) ex.v=v;
+        recomputeGroup(cid); computeThrGroup((cid.match(/^G\d+/)||[])[0]); applyFilters(); renderEditTable();
+        toast('已保存 '+fmtDate(d)+' → '+v+'℃',true);
+      }else{
+        toast('保存失败：'+(j.error||'未知错误'));
+        const o=(DB.cseries[cid]||[]).find(x=>x.d===d); if(o) inp.value=o.v;
+      }
+    }).catch(err=>{ inp.disabled=false; toast('保存失败：'+err.message); });
+}
+
+/* ============ Admin password gate (session unlock; backend enforces every write) ============ */
+let ADMIN_PWD=null;
+function requireUnlock(cb){
+  if(ADMIN_PWD){ cb(); return; }
+  document.getElementById('pwdErr').textContent='';
+  document.getElementById('pwdInput').value='';
+  document.getElementById('pwdOverlay').classList.add('show');
+  setTimeout(()=>{ try{document.getElementById('pwdInput').focus();}catch(e){} },50);
+  window.__pwdCb=cb;
+}
+document.getElementById('pwdCancel').onclick=()=>document.getElementById('pwdOverlay').classList.remove('show');
+function doUnlock(){
+  const pw=document.getElementById('pwdInput').value;
+  if(!pw){ document.getElementById('pwdErr').textContent='请输入密码'; return; }
+  fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})})
+   .then(r=>r.json()).then(j=>{
+      if(j.ok){ ADMIN_PWD=pw; document.getElementById('pwdOverlay').classList.remove('show'); document.getElementById('edPwdHint').textContent='● 已解锁后台修改（上传数据 / 数据修正，本设备本次会话有效）'; toast('已解锁后台修改（本设备本次会话有效）',true); const cb=window.__pwdCb; window.__pwdCb=null; if(cb) cb(); }
+      else { document.getElementById('pwdErr').textContent=(j.error||'密码错误'); }
+   }).catch(e=>{ document.getElementById('pwdErr').textContent='验证失败：'+e.message; });
+}
+document.getElementById('pwdUnlock').onclick=doUnlock;
+document.getElementById('pwdInput').addEventListener('keydown',e=>{ if(e.key==='Enter') doUnlock(); });
+// on 401 needAuth (e.g. password changed elsewhere), re-lock and re-prompt
+function handleNeedAuth(j, retry){
+  if(j && j.needAuth){ ADMIN_PWD=null; document.getElementById('edPwdHint').textContent=''; toast('密码已失效，请重新解锁'); requireUnlock(retry||function(){}); return true; }
+  return false;
+}
+// change-password control inside the edit panel
+document.getElementById('edChangePwd').onclick=()=>{
+  const box=document.getElementById('edPwdBox');
+  box.style.display = (box.style.display==='none'||!box.style.display)?'block':'none';
+  if(box.style.display==='block'){ document.getElementById('edPwdMsg').textContent=''; document.getElementById('edNewPwd').focus(); }
+};
+document.getElementById('edPwdCancel').onclick=()=>{ document.getElementById('edPwdBox').style.display='none'; };
+document.getElementById('edPwdSave').onclick=()=>{
+  const np=document.getElementById('edNewPwd').value, np2=document.getElementById('edNewPwd2').value, msg=document.getElementById('edPwdMsg');
+  if(!np||np.length<4||np.length>32){ msg.style.color='#ff9c8a'; msg.textContent='新密码需为4~32位字符'; return; }
+  if(np!==np2){ msg.style.color='#ff9c8a'; msg.textContent='两次输入不一致'; return; }
+  if(!ADMIN_PWD){ msg.style.color='#ff9c8a'; msg.textContent='请先解锁后台修改'; return; }
+  msg.style.color='#7e91bd'; msg.textContent='提交中…';
+  fetch('/api/changepwd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({oldPassword:ADMIN_PWD,newPassword:np})})
+   .then(r=>r.json()).then(j=>{
+      if(j.ok){ ADMIN_PWD=np; msg.style.color='#7fffb0'; msg.textContent='密码已修改，请牢记新密码'; document.getElementById('edNewPwd').value=''; document.getElementById('edNewPwd2').value=''; setTimeout(()=>{ document.getElementById('edPwdBox').style.display='none'; },1200); toast('后台密码已更新',true); }
+      else { msg.style.color='#ff9c8a'; msg.textContent=(j.error||'修改失败'); }
+   }).catch(e=>{ msg.style.color='#ff9c8a'; msg.textContent='修改失败：'+e.message; });
+};
+document.getElementById('btnEdit').onclick=()=>requireUnlock(()=>openEditor());
+document.getElementById('edClose').onclick=()=>document.getElementById('editOverlay').classList.remove('show');
+document.getElementById('edGroup').onchange=()=>{ fillChannelSelect(document.getElementById('edGroup').value); renderEditTable(); };
+document.getElementById('edChannel').onchange=renderEditTable;
+document.getElementById('edAnomOnly').onchange=renderEditTable;
+document.querySelector('#edTbl tbody').addEventListener('change',e=>{ const inp=e.target.closest('.edv'); if(inp) saveEdit(inp); });
+document.querySelector('#edTbl tbody').addEventListener('keydown',e=>{ if(e.key==='Enter'){ const inp=e.target.closest('.edv'); if(inp) inp.blur(); } });
+document.getElementById('edMeanAll').onclick=()=>{
+  if(!ADMIN_PWD){ requireUnlock(()=>document.getElementById('edMeanAll').click()); return; }
+  const cid=edCid; if(!cid) return;
+  const gid=(cid.match(/^G\d+/)||[])[0], thr=THR[gid]||Infinity;
+  const arr=DB.cseries[cid]||[];
+  const kept=arr.filter(x=>x.v<=thr).map(x=>x.v);
+  const mean=kept.length?+(kept.reduce((a,b)=>a+b,0)/kept.length).toFixed(1):0;
+  const anoms=arr.filter(x=>x.v>thr);
+  if(!anoms.length){ toast('该通道无异常值'); return; }
+  let chain=Promise.resolve();
+  anoms.forEach(x=>{
+    chain=chain.then(()=>fetch('/api/edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channelId:cid,date:x.d,value:mean,password:ADMIN_PWD})})
+      .then(r=>r.json()).then(j=>{ if(handleNeedAuth(j,()=>document.getElementById('edMeanAll').click())) throw 'relock'; if(j.ok){ const ex=DB.cseries[cid].find(t=>t.d===x.d); if(ex) ex.v=mean; } }));
+  });
+  chain.then(()=>{ recomputeGroup(cid); computeThrGroup(gid); applyFilters(); renderEditTable(); toast('已将 '+anoms.length+' 条异常恢复为均值 '+mean+'℃',true); })
+        .catch(e=>{ if(e!=='relock'){ console.error(e); } });
+};
+document.addEventListener('click',e=>{ const eb=e.target.closest('.ed-open'); if(eb){ requireUnlock(()=>openEditor(eb.dataset.gid)); } });
+
+/* ============ Filter bar toggle (top bar button + bar header) ============ */
+function toggleFilterBar(){ document.getElementById('filterbar').classList.toggle('collapsed'); }
+document.getElementById('fbToggle').onclick=toggleFilterBar;
+document.getElementById('chanCtrlToggle').onclick=()=>document.getElementById('chanCtrl').classList.toggle('collapsed');
+
+/* ============ Trend play (fullscreen rotation of 4–6 per-point charts) ============ */
+let playChart=null, playList=[], playIdx=0, playTimer=null, playOn=false;
+let playIntervalSec=6;   // 轮播切换间隔（秒），可在设置中选择
+let playChanSel={};       // 跨关闭持久保留：按点位记忆通道勾选 {gid:{通道名:bool}}；重开轮播沿用上次退出时的选择
+let playCurGid=null;      // 当前轮播图对应的点位 id
+let playMode='single';    // 'single' 单图轮播 | 'grid' 多图同屏
+let gridCharts={};        // 多图同屏：各画面的 ECharts 实例 {T0:chart,...}
+let playBigChart=null;    // 单画面全屏放大的 ECharts 实例
+let bigTid=null;           // 当前全屏放大的画面 tid（放大后仍跟随图内轮播）
+let playGridRot=true;     // 多图同屏「图内轮播」：各图在分配的点位间自动循环
+let gridRotTimer=null;    // 图内轮播定时器
+let tileState={};         // 多图同屏：各画面状态 {T0:{assign:[gid...], legend:{...}}}
+function buildPlaySpeedChips(){
+  const host=document.getElementById('playSpeedChips'); if(!host) return; host.innerHTML='';
+  [3,6,10,15,30].forEach(sec=>{
+    const c=mkChip('', playIntervalSec===sec);
+    c.innerHTML=sec+' 秒 <span class="en">'+sec+'s</span>';
+    c.onclick=()=>{ playIntervalSec=sec; buildPlaySpeedChips(); if(playOn) setPlayOn(true); if(playGridRot && playMode==='grid' && gridRotTimer) startGridRotation(); };
+    host.appendChild(c);
+  });
+}
+function renderPlayChips(selSet){
+  const host=document.getElementById('playChips'); if(!host) return; host.innerHTML='';
+  DB.groups.forEach(g=>{
+    const on=selSet.has(g.id);
+    const c=document.createElement('div'); c.className='chip pchip'+(on?' on':'');
+    c.dataset.gid=g.id; c.style.setProperty('--c',g.color);
+    c.innerHTML='<span class="dot"></span>'+g.short+' <span class="en" style="opacity:.55">'+(GEN[g.id]?GEN[g.id]+' · ':'')+g.chans.length+'ch</span>';
+    c.onclick=()=>{ c.classList.toggle('on'); updatePlayHint(); };
+    host.appendChild(c);
+  });
+  updatePlayHint();
+}
+function getPlaySel(){ return [...document.querySelectorAll('#playChips .chip.on')].map(c=>c.dataset.gid); }
+function updatePlayHint(){
+  const n=getPlaySel().length; const h=document.getElementById('playHint');
+  if(playMode==='grid'){
+    if(n<4) h.innerHTML='已选 '+n+' 个 · 多图同屏需 4–6 个 <span class="en" style="opacity:.7">Selected '+n+' · grid needs 4–6</span>';
+    else if(n>6) h.innerHTML='已选 '+n+' 个 · 超过上限，请减到 6 个以内 <span class="en" style="opacity:.7">Too many — reduce to 6</span>';
+    else h.innerHTML='已选 '+n+' 个 · 可开始 ✓ <span class="en" style="opacity:.7">Selected '+n+' · ready</span>';
+  } else {
+    h.innerHTML='已选 '+n+' 个 · 可全选任意点位 <span class="en" style="opacity:.7">Selected '+n+' · any points</span>';
+  }
+}
+function openPlay(){
+  const overlay=document.getElementById('playOverlay');
+  const cur=[...state.groups];
+  const pre = cur.length>=4 ? cur.slice(0,6) : DB.groups.slice(0,6).map(g=>g.id);
+  renderPlayChips(new Set(pre));
+  buildPlaySpeedChips();
+  // 注意：playChanSel / tileState 不再在打开时清空，而是跨关闭持久保留，
+  // 重新打开时沿用上一次退出时的通道勾选与多图同屏记忆（见 renderPlayGrid / closePlay）。
+  overlay.classList.remove('hide-settings');
+  overlay.classList.add('show');
+  if(!playChart){
+    playChart=echarts.init(document.getElementById('playChart'));
+    playChart.on('legendselectchanged', e=>{ if(playCurGid) playChanSel[playCurGid]=e.selected; });
+  }
+  setTimeout(()=>playChart.resize(),60);
+}
+function buildPlayDots(){
+  const host=document.getElementById('playDots'); host.innerHTML='';
+  playList.forEach((gid,i)=>{
+    const d=document.createElement('div'); d.className='play-dot'+(i===playIdx?' on':'');
+    d.title=GMAP[gid].short+(GEN[gid]?' '+GEN[gid]:'');
+    d.onclick=()=>{ playIdx=i; renderPlayChart(gid); };
+    host.appendChild(d);
+  });
+}
+function refreshDots(){ document.querySelectorAll('#playDots .play-dot').forEach((d,i)=>d.classList.toggle('on',i===playIdx)); }
+function playSelFor(gid,o){
+  let sel=playChanSel[gid];
+  if(!sel){ sel={}; o.chans.forEach((c,i)=>{ sel[c.short]=(i===0); }); playChanSel[gid]=sel; }
+  return sel;
+}
+function buildPlayOption(gid,compact){
+  const o=buildChannelOption(gid); if(!o) return null;
+  const sel=playSelFor(gid,o);
+  const fs=compact?11:13;
+  return {
+    backgroundColor:'transparent',
+    tooltip:Object.assign({trigger:'axis',order:'valueDesc'},TT_STYLE),
+    legend:{data:o.chans.map(c=>c.short),textStyle:{color:'#cfe0ff',fontSize:fs},top:compact?2:6,type:'scroll',icon:'roundRect',pageTextStyle:{color:'#dce8ff'},selected:sel},
+    grid:{left:compact?46:64,right:compact?14:30,top:compact?30:54,bottom:compact?42:72},
+    xAxis:Object.assign({type:'category',data:o.dates.map(fmtDate),boundaryGap:false,axisLabel:{color:'#dce8ff',fontSize:compact?10:13}},AXIS_STYLE),
+    yAxis:Object.assign({type:'value',name:compact?'':'温度 ℃',scale:true,nameTextStyle:{color:'#dce8ff',fontSize:compact?12:14}},AXIS_STYLE),
+    dataZoom:[{type:'inside'},{type:'slider',height:compact?12:20,bottom:compact?8:26,borderColor:'rgba(255,255,255,.1)',textStyle:{color:'#dce8ff'},
+      dataBackground:{lineStyle:{color:'#597ef7'},areaStyle:{color:'rgba(89,126,247,.2)'}}}],
+    series:o.series
+  };
+}
+function renderPlayChart(gid){
+  const opt=buildPlayOption(gid,false); if(!opt) return;
+  playCurGid=gid;
+  document.getElementById('playNow').innerHTML='▸ '+GMAP[gid].short+(GEN[gid]?' <span class="en" style="opacity:.7;font-size:11px;">'+GEN[gid]+'</span>':'');
+  playChart.setOption(opt,true);
+  setTimeout(()=>playChart.resize(),30);
+  refreshDots();
+}
+function setPlayOn(on){
+  playOn=on;
+  const btn=document.getElementById('playToggle');
+  btn.innerHTML=on?'⏸ 暂停 <i class="en">Pause</i>':'▶ 播放 <i class="en">Play</i>';
+  if(playTimer){clearInterval(playTimer);playTimer=null;}
+  if(on && playList.length>1){ playTimer=setInterval(()=>stepPlay(1), playIntervalSec*1000); }
+}
+function stepPlay(dir){
+  if(!playList.length) return;
+  playIdx=(playIdx+dir+playList.length)%playList.length;
+  renderPlayChart(playList[playIdx]);
+}
+function startPlay(){
+  setPlayOn(false);            // 先停掉任何正在运行的轮播，避免切换模式后后台定时器错乱
+  const sel=getPlaySel();
+  if(playMode==='grid'){
+    if(sel.length<4||sel.length>6){ toast('多图同屏需选择 4–6 个点位（当前 '+sel.length+' 个）'); return; }
+  } else {
+    if(!sel.length){ toast('请至少选择 1 个点位'); return; }
+  }
+  playList=sel; playIdx=0;
+  document.getElementById('playOverlay').classList.add('hide-settings');
+  if(playMode==='grid'){
+    document.getElementById('playOverlay').classList.add('mode-grid');
+    renderPlayGrid();
+    if(playGridRot) startGridRotation();
+  } else {
+    document.getElementById('playOverlay').classList.remove('mode-grid');
+    document.getElementById('playNow').textContent='—';
+    buildPlayDots();
+    renderPlayChart(playList[playIdx]);
+    setPlayOn(true);
+    toast('开始轮播 '+playList.length+' 个点位',true);
+  }
+}
+function renderPlayGrid(){
+  const host=document.getElementById('playGrid'); host.innerHTML='';
+  disposeGridCharts();
+  const n=playList.length;
+  const cols=n<=4?2:3;
+  host.style.gridTemplateColumns='repeat('+cols+',1fr)';
+  host.style.gridAutoRows='1fr';
+  playList.forEach((gid,i)=>{
+    const tid='T'+i;
+    // 跨关闭持久保留：若已存在该画面的记忆且主点位一致，则沿用上次退出时的 assign/legend/rot；否则新建设定
+    let st=tileState[tid];
+    if(!st || st.gid!==gid){ st={gid, assign:[gid], legend:{}, rot:0}; }
+    tileState[tid]=st;
+    const tile=document.createElement('div'); tile.className='ptile'; tile.dataset.tid=tid;
+    const head=document.createElement('div'); head.className='pt-head';
+    const cap=document.createElement('span'); cap.className='pt-cap';
+    const pick=document.createElement('button'); pick.className='pt-pick'; pick.innerHTML='⚙ 点位 <span class="en" style="font-size:9px;opacity:.6;">Points</span>'; pick.title='选择该画面显示的点位 Select points for this tile';
+    const fs=document.createElement('button'); fs.className='pt-fs'; fs.innerHTML='⛶ 全屏 <span class="en" style="font-size:9px;opacity:.6;">Full</span>'; fs.title='全屏放大该画面 Maximize this tile';
+    const ch=document.createElement('div'); ch.className='pt-chart';
+    const pop=document.createElement('div'); pop.className='pt-pop';
+    head.appendChild(cap); head.appendChild(pick); head.appendChild(fs);
+    tile.appendChild(head); tile.appendChild(ch); tile.appendChild(pop);
+    host.appendChild(tile);
+    // 点位选择弹层
+    pick.onclick=(ev)=>{ ev.stopPropagation(); tile.classList.toggle('show-pop'); };
+    fs.onclick=(ev)=>{ ev.stopPropagation(); openBig(tid); };
+    DB.groups.forEach(g=>{
+      const c=document.createElement('div'); c.className='chip pchip'+(tileState[tid].assign.includes(g.id)?' on':'');
+      c.dataset.gid=g.id; c.style.setProperty('--c',g.color);
+      c.innerHTML='<span class="dot"></span>'+g.short+(GEN[g.id]?' <span class="en" style="opacity:.55">'+GEN[g.id]+'</span>':'');
+      c.onclick=(ev)=>{
+        ev.stopPropagation();
+        const a=tileState[tid].assign; const k=a.indexOf(g.id);
+        if(k>=0){ if(a.length<=1){ toast('每个画面至少保留 1 个点位'); return; } a.splice(k,1); c.classList.remove('on'); }
+        else { a.push(g.id); c.classList.add('on'); }
+        if(st.rot>=a.length) st.rot=0;
+        updateTile(tid);
+      };
+      pop.appendChild(c);
+    });
+    tile.addEventListener('click', (ev)=>{ if(!ev.target.closest('.pt-pop') && ev.target!==pick) tile.classList.remove('show-pop'); });
+    const chart=echarts.init(ch);
+    chart.on('legendselectchanged', e=>{
+      const st=tileState[tid]; if(!st) return;
+      const a=st.assign; if(!a.length) return;
+      if(playGridRot && a.length>1){ playChanSel[a[st.rot||0]]=e.selected; }
+      else if(a.length===1){ playChanSel[a[0]]=e.selected; }
+      else { st.legend=e.selected; }
+    });
+    gridCharts[tid]=chart;
+    updateTile(tid);
+  });
+  // 清理超出当前画面数 n 的旧记忆（如本次选的点位比上次少），避免残留
+  Object.keys(tileState).forEach(k=>{ const idx=parseInt(k.slice(1)); if(!isNaN(idx) && idx>=n) delete tileState[k]; });
+  document.getElementById('playNow').textContent='同屏 '+n+' 个画面';
+  setTimeout(()=>Object.values(gridCharts).forEach(c=>c&&c.resize()),40);
+}
+function disposeGridCharts(){ Object.values(gridCharts).forEach(c=>{ try{c.dispose();}catch(e){} }); gridCharts={}; }
+function tileCurGid(st){ return (playGridRot && st.assign.length>1) ? (st.assign[st.rot||0]||st.assign[0]) : null; }
+function gEnSpan(gid){ return GEN[gid]?' <span class="en" style="opacity:.6;font-size:11px;">'+GEN[gid]+'</span>':''; }
+function tileTitleFor(st){
+  const gid=tileCurGid(st);
+  if(gid) return GMAP[gid].short+gEnSpan(gid);
+  if(st.assign.length===1) return GMAP[st.assign[0]].short+gEnSpan(st.assign[0]);
+  return st.assign.map(g=>GMAP[g].short).join(' + ')+' <span class="en" style="opacity:.6;font-size:11px;">'+st.assign.map(g=>GEN[g]||GMAP[g].short).join(' + ')+'</span>';
+}
+function updateBigCap(tid){
+  const el=document.getElementById('playBigCap'); if(!el) return;
+  const st=tileState[tid];
+  el.innerHTML = st ? tileTitleFor(st) : '';
+}
+function updateTile(tid){
+  const st=tileState[tid]; if(!st) return;
+  const tile=document.querySelector('.ptile[data-tid="'+tid+'"]'); if(!tile) return;
+  const cap=tile.querySelector('.pt-cap');
+  const c=gridCharts[tid]; if(!c) return;
+  const gid=tileCurGid(st);
+  const opt = gid ? buildPlayOption(gid,true) : (st.assign.length===1 ? buildPlayOption(st.assign[0],true) : buildMultiOption(tid,st.assign));
+  cap.innerHTML=tileTitleFor(st);
+  if(opt) c.setOption(opt,true);
+}
+/* 单画面全屏放大：复用该画面当前的点位组合与通道勾选 */
+function bigOptFor(tid){
+  const st=tileState[tid]; if(!st) return null;
+  if(playGridRot && st.assign.length>1){ return buildPlayOption(st.assign[st.rot||0]||st.assign[0],false); }
+  return st.assign.length===1 ? buildPlayOption(st.assign[0],false) : buildMultiOption(tid,st.assign);
+}
+function openBig(tid){
+  const st=tileState[tid]; if(!st) return;
+  document.getElementById('playOverlay').classList.add('show-big');
+  if(!playBigChart) playBigChart=echarts.init(document.getElementById('playBigChart'));
+  bigTid=tid;
+  const opt = bigOptFor(tid);
+  if(opt){ playBigChart.setOption(opt,true); }
+  updateBigCap(tid);
+  playBigChart.off('legendselectchanged');
+  playBigChart.on('legendselectchanged', e=>{
+    const s2=tileState[tid]; if(!s2) return;
+    const a=s2.assign; if(!a.length) return;
+    if(playGridRot && a.length>1){ playChanSel[a[s2.rot||0]]=e.selected; }
+    else if(a.length===1){ playChanSel[a[0]]=e.selected; }
+    else { s2.legend=e.selected; }
+  });
+  setTimeout(()=>{ if(playBigChart) playBigChart.resize(); },30);
+}
+function closeBig(){
+  document.getElementById('playOverlay').classList.remove('show-big');
+  bigTid=null;
+  if(playBigChart){ try{playBigChart.dispose();}catch(e){} playBigChart=null; }
+}
+/* 多图同屏「图内轮播」：各图在分配的点位间自动循环显示 */
+function startGridRotation(){
+  stopGridRotation();
+  if(playMode!=='grid' || !Object.keys(tileState).length) return;
+  gridRotTimer=setInterval(()=>{
+    Object.keys(tileState).forEach(tid=>{
+      const st=tileState[tid];
+      if(st && st.assign.length>1){ st.rot=((st.rot||0)+1)%st.assign.length; updateTile(tid); }
+    });
+    // 若某个画面处于全屏放大态，让大图同步跟随图内轮播继续播放（名称+图表）
+    if(bigTid && playBigChart){
+      const bopt=bigOptFor(bigTid);
+      if(bopt){ playBigChart.setOption(bopt,true); playBigChart.resize(); }
+      updateBigCap(bigTid);
+    }
+    Object.values(gridCharts).forEach(c=>c&&c.resize());
+  }, Math.max(1,playIntervalSec)*1000);
+}
+function stopGridRotation(){ if(gridRotTimer){clearInterval(gridRotTimer); gridRotTimer=null;} }
+function refreshAllTiles(){ Object.keys(tileState).forEach(tid=>updateTile(tid)); }
+function buildMultiOption(tid,gids){
+  const dates=ALL_DATES.filter(d=>state.years.has(yOf(d))&&state.months.has(ymOf(d)));
+  const st=tileState[tid];
+  let sel=st.legend;
+  if(!sel){ sel={}; gids.forEach(g=>{ sel[GMAP[g].short]=true; }); st.legend=sel; }
+  const series=gids.map(gid=>{
+    const g=GMAP[gid];
+    const map={}; (DB.gseries[gid]||[]).forEach(x=>{ if(state.years.has(yOf(x.d))&&state.months.has(ymOf(x.d))) map[x.d]=x.m; });
+    return {name:g.short,type:'line',smooth:false,showSymbol:false,sampling:'lttb',
+      lineStyle:{width:2,color:g.color},itemStyle:{color:g.color},
+      data:dates.map(d=>map[d]!=null?map[d]:null)};
+  });
+  return {
+    backgroundColor:'transparent',
+    tooltip:Object.assign({trigger:'axis',order:'valueDesc'},TT_STYLE),
+    legend:{data:gids.map(g=>GMAP[g].short),textStyle:{color:'#cfe0ff',fontSize:10},top:0,type:'scroll',icon:'roundRect',pageTextStyle:{color:'#dce8ff'},selected:sel},
+    grid:{left:42,right:12,top:24,bottom:36},
+    xAxis:Object.assign({type:'category',data:dates.map(fmtDate),boundaryGap:false,axisLabel:{color:'#dce8ff',fontSize:9}},AXIS_STYLE),
+    yAxis:Object.assign({type:'value',scale:true,nameTextStyle:{color:'#dce8ff',fontSize:10}},AXIS_STYLE),
+    series
+  };
+}
+function togglePlay(){ if(!playList.length) return; setPlayOn(!playOn); }
+function closePlay(){ setPlayOn(false); stopGridRotation(); disposeGridCharts();
+  closeBig();
+  // 不在此清空 playChanSel / tileState：退出时保留上次记忆，重开沿用（不恢复到默认第一条通道线）
+  document.getElementById('playOverlay').classList.remove('show','mode-grid'); }
+document.getElementById('btnPlay').onclick=openPlay;
+document.getElementById('playClose').onclick=closePlay;
+document.getElementById('playBack').onclick=closeBig;
+document.getElementById('playSettingsBtn').onclick=()=>document.getElementById('playOverlay').classList.toggle('hide-settings');
+document.getElementById('playToggle').onclick=togglePlay;
+document.getElementById('playNext').onclick=()=>stepPlay(1);
+document.getElementById('playPrev').onclick=()=>stepPlay(-1);
+document.getElementById('playStart').onclick=startPlay;
+const _gridRotEl=document.getElementById('playGridRot');
+if(_gridRotEl){
+  playGridRot=_gridRotEl.checked;
+  _gridRotEl.onchange=()=>{
+    playGridRot=_gridRotEl.checked;
+    const ov=document.getElementById('playOverlay');
+    if(playMode==='grid' && ov.classList.contains('mode-grid')){
+      if(playGridRot) startGridRotation(); else stopGridRotation();
+      refreshAllTiles();
+    }
+  };
+}
+document.getElementById('playSelAll6').onclick=()=>{
+  const chips=[...document.querySelectorAll('#playChips .chip')];
+  if(playMode==='grid'){ chips.forEach((c,i)=>c.classList.toggle('on', i<6)); }
+  else { chips.forEach(c=>c.classList.add('on')); }
+  updatePlayHint();
+};
+document.querySelectorAll('#playModeChips .chip').forEach(ch=>{
+  ch.onclick=()=>{
+    if(playMode===ch.dataset.mode) return;
+    setPlayOn(false);          // 切换模式时停止旧轮播定时器
+    stopGridRotation();        // 停止图内轮播定时器
+    document.querySelectorAll('#playModeChips .chip').forEach(x=>x.classList.toggle('on', x===ch));
+    playMode=ch.dataset.mode;
+    const note=document.getElementById('playSelNote');
+    const btn=document.getElementById('playSelAll6');
+    if(playMode==='grid'){
+      note.innerHTML='多图同屏：勾选 4–6 个点位开始；每个画面右上角「⚙ 点位」可自选 1 个或多个点位（默认按勾选顺序分配到各图）。开启「图内轮播」后，每个图在所分配的点位间自动轮流显示；关闭则把多个点位叠加在同一条折线图里对照。<br><span class="en" style="opacity:.72">Grid: pick 4–6 points to start; use each tile\'s "⚙ Points" to assign points (in selection order). With in-chart rotation on, each tile cycles its assigned points; off, they overlay in one chart.</span>';
+      btn.innerHTML='选前 6 个 <span class="en">First 6</span>';
+    } else {
+      note.innerHTML='单图轮播：勾选任意数量点位（可全选），开始后逐张满屏播放（默认仅显示第一条通道，点图例叠加其他通道）。<br><span class="en" style="opacity:.72">Single: pick any points; each plays full-screen in turn (first channel only by default, click legend to add more).</span>';
+      btn.innerHTML='全选 <span class="en">All</span>';
+    }
+    updatePlayHint();
+  };
+});
+document.addEventListener('keydown',e=>{
+  if(!document.getElementById('playOverlay').classList.contains('show')) return;
+  if(e.key==='Escape'){ closePlay(); }
+  else if(e.key===' '){ e.preventDefault(); togglePlay(); }
+  else if(e.key==='ArrowRight'){ stepPlay(1); }
+  else if(e.key==='ArrowLeft'){ stepPlay(-1); }
+});
+
+/* ============ Boot ============ */
+io=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const el=e.target; const gid=el.id.replace('cchart_','');
+      if(state.groups.has(gid) && !renderedGids.has(gid)) renderChannelChart(gid);
+    }
+  });
+},{rootMargin:'220px'});
+initCharts();
+buildChips();
+rebuildChannelCards();
+computeThresholds();
+applyFilters();   // renders summary/heat/range/radar/table/KPI (channel charts lazy)
+updateNote();
+</script>
+</body>
+</html>

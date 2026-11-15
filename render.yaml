@@ -1,0 +1,17 @@
+# Render.com 部署配置（免费版）— 与 tril-suite 同款
+# 在 Render Dashboard 新建 Web Service 选择本仓库，或导入本文件。
+services:
+  - type: web
+    name: maerz-kiln
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: "echo no-build"
+    startCommand: "node server.js"
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: PORT
+        value: "10000"
+    healthCheckPath: /api/health

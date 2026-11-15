@@ -1,0 +1,4 @@
+.auth.json
+*.genie
+node_modules
+.DS_Store
